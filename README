@@ -20,15 +20,15 @@ Instructions:
 	
 	- Initialize it with a python-redis instance:
 	
-	    db=redis.Redis(host='localhost', port=6379, db=0)
-    	kwargs = {}
-    	kwargs["db"] = redis.Redis(host='localhost', port=6379, db=0)
+>> db=redis.Redis(host='localhost', port=6379, db=0)
+>> kwargs = {}
+>> kwargs["db"] = redis.Redis(host='localhost', port=6379, db=0)
     	
-    	cp = corpus_handler.CorpusHandler(**kwargs)
+>> cp = corpus_handler.CorpusHandler(**kwargs)
 	
 	- Somehow, you must have some documents to feed the INDEX. Assuming that you solved this problem ( use simple files or an SQL server or xml feeds or...), you only need a document's id (doc_id) and its content to index a document
 
-		cp.add_document( doc_id , content.split() )
+>> cp.add_document( doc_id , content.split() )
 		
 		
 	
