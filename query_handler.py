@@ -159,12 +159,10 @@ class QueryHandler(index_base.IndexBase):
         if self.debug: print "performing difference on " , term
         diff_key = term + "diffkey"
         members = self.db.zrange(term, 0, -1, withscores=False)
-        print "members : " , members
         for m in members:
             self.db.sadd(diff_key, m)
             
         difference = self.db.sdiff("DDOOCCIIDDSS", diff_key)    
-        print "difference " ,     difference
         self.db.delete(diff_key)
         for diff in difference:
             self.db.zadd(diff_key, diff, 1)    
