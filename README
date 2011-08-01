@@ -1,0 +1,11 @@
+A simple and fast search engine based on python and redis
+
+Features:
+
+	- Dynamic insertion, deletion and inspection of documents in corpus, with automatic tf-idf handling
+	- Boolean queries interface for tf-idf weighted document retrieval
+
+Todo:
+
+	- Add stemming feature
+
