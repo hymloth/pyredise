@@ -3,25 +3,25 @@
 <p>
 Features:
 
-	*Dynamic insertion, deletion and inspection of documents in corpus, with automatic tf-idf handling
-	*Boolean queries interface for tf-idf weighted document retrieval
+	<li>Dynamic insertion, deletion and inspection of documents in corpus, with automatic tf-idf handling</li>
+	<li>Boolean queries interface for tf-idf weighted document retrieval</li>
 </p>
 
 <p>
 Dependencies:
 
-	*redis 2.2.12
-	*redis-py (https://github.com/andymccurdy/redis-py)
+	<li>redis 2.2.12</li>
+	<li>redis-py (https://github.com/andymccurdy/redis-py)</li>
 </p>	
 	
 Instructions:
 
 <p>	
-	*You must have redis installed and configured properly.
+	<li>You must have redis installed and configured properly</li>
 
-	*As a starting point, take a look at corpus_handler.py
+	<li>As a starting point, take a look at corpus_handler.py</li>
 	
-	*Initialize it with a python-redis instance:
+	<li>Initialize it with a python-redis instance:</li>
 
 <pre><code>	
 import redis
@@ -36,7 +36,7 @@ cp = corpus_handler.CorpusHandler(**kwargs)
 
 
 	
-	*Somehow, you must have some documents to feed the INDEX. Assuming that you solved this problem ( use simple files or an SQL server or xml feeds or...), you only need a document's id (doc_id) and its content to index a document
+	<li>Somehow, you must have some documents to feed the INDEX. Assuming that you solved this problem ( use simple files or an SQL server or xml feeds or...), you only need a document's id (doc_id) and its content to index a document</li>
 
 <pre><code>
 cp.add_document( doc_id , content.split() )
