@@ -1,7 +1,7 @@
 <p>A simple and fast search engine based on python and redis</p>
 
 <p>
-Features:
+<em>Features:</em>
 <ul>
 	<li>Dynamic insertion, deletion and inspection of documents in corpus, with automatic tf-idf handling</li>
 	<li>Boolean queries interface for tf-idf weighted document retrieval</li>
@@ -9,14 +9,14 @@ Features:
 </p>
 
 <p>
-Dependencies:
+<em>Dependencies:</em>
 <ul>
 	<li>redis 2.2.12</li>
 	<li>redis-py (https://github.com/andymccurdy/redis-py)</li>
 </ul>	
 </p>	
 	
-Instructions:
+<em>Instructions:</em>
 
 <p>	
 <ul>
@@ -27,6 +27,7 @@ Instructions:
 	
 	<li>Initialize it with a python-redis instance:</li>
 </ul>
+
 <pre><code>	
 import redis
 import corpus_handler
