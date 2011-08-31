@@ -48,7 +48,7 @@ class IndexHandler(index_base.IndexBase):
         '''
 	    adds this doc_id into our term hash 
 	    the value is " TF pos1 pos2 ... "
-	    '''
+	'''
         self.pipe.hset(term, str(doc_id), value)   
         
     def term_remove_doc_id(self, term, doc_id):
