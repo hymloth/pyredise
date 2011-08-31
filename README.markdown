@@ -5,6 +5,7 @@
 <ul>
 	<li>Dynamic insertion, deletion and inspection of documents in corpus, with automatic tf-idf handling</li>
 	<li>Vector space model document retrieval with a simple proximity ranking</li>	
+	<li>Boolean queries interface</li>
 </ul>	
 </p>
 
