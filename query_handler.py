@@ -34,12 +34,7 @@ class QueryHandler(query_base.QueryBase):
     '''
     A class that handles queries upon our INDEX.
     
-    Attributes :
-    
-        limit : at most results to return
-        query_dict : helper dict containing terms : terms-idf
-        temporary_keys : list holding temporary keys to delete later
-        debug : whether to print messages for debugging purposes
+    It provides functions to deal with boolean retrieval or vector space model retrieval.
         
     '''
     

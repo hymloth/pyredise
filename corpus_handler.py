@@ -34,11 +34,19 @@ class CorpusHandler(dict, index_handler.IndexHandler):
     
     It provides methods for document insertion, deletion, inspection, which, in turn, update all
     relevant INDEX stuff in the background.
+    
+    Attributes :
+    
+        cnt : keeps track of positions
+        debug : whether to print messages for debugging purposes
+        stemmer : Porter stemmer for words preprocessing
+        stopwords : common words to exclude from indexing    
+    
     '''
     
     def __init__(self, **kwargs):
         index_handler.IndexHandler.__init__(self, **kwargs)
-        self.cnt = 0 # keeps track of positions
+        self.cnt = 0 
         self.debug = kwargs.get('debug',True)
         self.stemmer = PorterStemmer()
         self.stopwords = stopwords.words('english')

@@ -39,7 +39,8 @@ class QueryBase(index_base.IndexBase):
         temporary_keys : list holding temporary keys to delete later
 	    filters : dictionary holding regexes to categorize query 
         debug : whether to print messages for debugging purposes
-        
+        stemmer : Porter stemmer for words preprocessing
+        stopwords : common words to exclude from indexing
     '''
     
     def __init__(self, **kwargs):
@@ -171,7 +172,7 @@ class QueryBase(index_base.IndexBase):
         for term in filtered_query_list:  
             self.pipe.hget(term, "DF") 
         
-        res = self.flush()  # gather every result of the pipeline
+        res = self.flush()  
         # res[0] is cardinality and the rest the idfs of every term
         for i in range(1, len(res)):
             if res[i]: self.query_dict[filtered_query_list[i-1]] = math.log( float(res[0])/float(res[i])) 

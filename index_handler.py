@@ -84,7 +84,7 @@ class IndexHandler(index_base.IndexBase):
             self.pipe.hget(term, "DF")
         
         res = self.flush()
-        # res[0] is cardinality and the rest are the idf of every term   
+        # res[0] is cardinality and the rest are the idfs of every term   
         return [math.log( float(res[0])/float(i) ) for i in res[1:] if i != None]
     
     

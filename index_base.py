@@ -30,6 +30,7 @@ class IndexBase(object):
     Attributes:
     
        _cardinality_key : a special key of _dict_key denoting the total number of documents in our corpus
+       _set_key : a special key holding our unique docIDs currently present in the corpus
        db : the name of redis database (server)
        pipe : redis pipeline object
        
