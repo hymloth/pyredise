@@ -1,8 +1,9 @@
 #!/usr/bin/python2.6.5
+# -*- coding: utf-8 -*-
 
 '''
 Parser stuff for query evaluation
-taken from the pyparsing's wiki and modified heavily :)
+taken from the pyparsing's wiki and modified heavily :)  (somehow)
 '''
 
 from pyparsing import *
@@ -49,12 +50,12 @@ class SearchOr(BinaryOperation):
 
 class SearchNot(UnaryOperation):
     def generateSetExpression(self):
-        if isinstance(self.a, SearchTerm): return "self.diff(\"%s\")" % str(self.a)
-        else: return "self.diff(%s)" % str(self.a)
+        if isinstance(self.a, SearchTerm): return "self.diff([\"%s\"])" % str(self.a)
+        else: return "self.diff([%s])" % str(self.a)
     
     def __repr__(self):
-        if isinstance(self.a, SearchTerm): return "self.diff(\"%s\")" % str(self.a)
-        else: return "self.diff(%s)" % str(self.a)
+        if isinstance(self.a, SearchTerm): return "self.diff([\"%s\"])" % str(self.a)
+        else: return "self.diff([%s])" % str(self.a)
 
 class SearchTerm(object):
     def __init__(self, tokens):

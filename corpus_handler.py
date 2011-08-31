@@ -1,4 +1,5 @@
 #!/usr/bin/python2.6.5
+# -*- coding: utf-8 -*-
 #
 # Copyright 2011 Christos Spiliopoulos.
 #
@@ -22,6 +23,9 @@ __authors__ = [
 
 
 import index_handler
+from nltk import PorterStemmer
+from nltk.corpus import stopwords
+
 
 
 class CorpusHandler(dict, index_handler.IndexHandler):
@@ -34,7 +38,10 @@ class CorpusHandler(dict, index_handler.IndexHandler):
     
     def __init__(self, **kwargs):
         index_handler.IndexHandler.__init__(self, **kwargs)
+        self.cnt = 0 # keeps track of positions
         self.debug = kwargs.get('debug',True)
+        self.stemmer = PorterStemmer()
+        self.stopwords = stopwords.words('english')
 
     def __setitem__(self, key, value, update_index=False):
         '''
@@ -42,28 +49,34 @@ class CorpusHandler(dict, index_handler.IndexHandler):
         Modified to update the INDEX, if update_index==True
         ( and acts as a Counter, see collections.Counter in STL )
         '''
-        if key in self: # if already seen, just update term frequency
+        if key in self: # if already seen, just add position in document
             a = self[key]
-            a += value
+            a.append(value)
             del self[key]
         else: # first time encountered, update INDEX
-            a = value   
-            if update_index: self.update_term_idf(key,value=value) 
+            a = []
+            a.append(value)
+            if update_index: self.update_term_idf(key,value=1) 
         dict.__setitem__(self, key, a)
         
         
     def add_document(self, doc_id, doc_list):
-        ''' Updates INDEX with a (split) document, returns success of operation ''' 
-        self.clear() # first of all, clear our keys-values so far
-        # then check to see if we have already added this doc_id
+        ''' Updates INDEX with a (split) document, returns success of operation '''
+         
+        self.clear_all()
+
         if not self.doc_id_exists(doc_id):
             self.add_doc_id(doc_id) 
             for i in doc_list:
-                self.__setitem__(i, value = 1, update_index=True) # remember, it involves redis pipelining
+                if i.lower() not in self.stopwords: 
+                    self.__setitem__(self.stemmer.stem_word(i.lower()), value = self.cnt, update_index=True) # remember, it involves redis pipelining
+                self.cnt += 1
             # update posting list
             length = len(doc_list)    
-            for term in self.keys():
-                self.update_term_posting(term, doc_id, float(self.__getitem__(term))/length)    
+            for term in self.keys(): 
+                term_frequency = float(len(self.__getitem__(term)))/length
+                value = str(term_frequency) + ", " +  ", ".join([str(i) for i in self.__getitem__(term)])
+                self.term_add_doc_id(term, doc_id, value)
 
             self.update_cardinality()
             self.flush()
@@ -78,12 +91,14 @@ class CorpusHandler(dict, index_handler.IndexHandler):
          given a split document it returns a string with format: term1:term1-tf-idf:term2:term2-tf_idf:.... 
          NOTE: update_index must be False ( AS TO NOT UPDATE THE "INDEX" )
         '''
-        # first of all, clear our keys-values so far
-        self.clear()
+        
+        self.clear_all()
+        
         for i in doc_list:
-            self.__setitem__(i, value = 1, update_index=False) # remember, it DOES NOT involve redis pipelining
+            if i.lower() not in self.stopwords:
+                self.__setitem__(self.stemmer.stem_word(i.lower()), value = 1, update_index=False) # remember, it DOES NOT involve redis pipelining
         idfs = self.piped_get_idf(doc_list)
-        # use some python magic
+
         length = len(doc_list)
         tf_idf_list = "".join( [(doc_list[i]+ ":" + str( idfs[i]*float( self.__getitem__(doc_list[i]) )/float(length) ) + ":") for i in range(length) ] ) 
         return tf_idf_list 
@@ -91,15 +106,25 @@ class CorpusHandler(dict, index_handler.IndexHandler):
     
     def remove_document(self, doc_id, doc_list):
         ''' removes a document from INDEX , returns success of operation '''
-        # first of all, clear our keys-values so far
-        self.clear()
-        # then check to see if we have already added this doc_id
+
+        self.clear_all()
+
         if self.doc_id_exists(doc_id):        
-            for i in doc_list:
-                self.__setitem__(i, value = -1, update_index=True) # remember, it involves redis pipelining
+            for i in set(doc_list): 
+                if i.lower() not in self.stopwords:
+                    self.term_remove_doc_id(self.stemmer.stem_word(i.lower()), doc_id) # remember, it involves redis pipelining
+                    self.update_term_idf(value = -1)
             self.update_cardinality(value = -1) # adjust cardinality
             self.flush() # update all 
             return True
         else:
             if self.debug: print "Removal Failed: This docID does not exist in our corpus" 
             return False
+
+
+
+    def clear_all(self):
+        self.clear()
+        self.cnt = 0
+
+

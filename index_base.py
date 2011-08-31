@@ -1,4 +1,5 @@
 #!/usr/bin/python2.6.5
+# -*- coding: utf-8 -*-
 #
 # Copyright 2011 Christos Spiliopoulos.
 #
@@ -22,18 +23,12 @@ __authors__ = [
 
 
 
-
-
-
-
 class IndexBase(object):
     '''
     A base class representing a "connection" with a redis server ( db )
     
     Attributes:
     
-       _dict_key : a redis key (default name = TERMIDFS) that contains keys and values of the form (term : # of docs containing this term)
-       _set_key : a redis key (default name = DOCIDS) that contains every DocId currently present in the corpus
        _cardinality_key : a special key of _dict_key denoting the total number of documents in our corpus
        db : the name of redis database (server)
        pipe : redis pipeline object
@@ -49,9 +44,8 @@ class IndexBase(object):
     
     def __init__(self, **kwargs):
         ''' just initialize the attributes '''
-        self._dict_key = kwargs.get('hash_key',"TERMIDFS") 
-        self._set_key = kwargs.get('set_key',"DOCIDS") 
         self._cardinality_key = kwargs.get('cardinality_key',"CARDINALITY") 
+        self._set_key = kwargs.get('set_key',"DOCIDS")
         self.db = kwargs.get('db',"") 
         self.pipe = self.db.pipeline()
         
@@ -62,4 +56,7 @@ class IndexBase(object):
     def drop(self):
         ''' must be never called '''
         return self.db.flushdb()   
-            
+
+
+
+

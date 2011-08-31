@@ -1,4 +1,5 @@
 #!/usr/bin/python2.6.5
+# -*- coding: utf-8 -*-
 #
 # Copyright 2011 Christos Spiliopoulos.
 #
@@ -19,10 +20,17 @@ import index_base
 import math
 import re
 from pyparser import *
+import query_base
+from operator import itemgetter
 
 
 
-class QueryHandler(index_base.IndexBase):
+def sort_by_attr(t, attr, reverse = True):
+    '''sorts a list of dicts by given attribute, returns a list'''
+    return sorted(t, key=itemgetter('%s'%attr), cmp = lambda x, y:cmp(int(x),int(y)), reverse=reverse)
+
+
+class QueryHandler(query_base.QueryBase):
     '''
     A class that handles queries upon our INDEX.
     
@@ -36,141 +44,111 @@ class QueryHandler(index_base.IndexBase):
     '''
     
     def __init__(self, **kwargs):
-        index_base.IndexBase.__init__(self,  **kwargs)    
-        self.limit = kwargs.get('limit',10) 
-        self.query_dict = {} 
-        self.temporary_keys = []
-        self.debug = kwargs.get('debug',True) 
-
-    
-    def process_query(self, query):
-        ''' entry point for query processing '''
-       
-        if len(query.split()) == 1: return self.exec_single_query(query)    # first case, single query
-        
-        query = self.transform_into_boolean_query(query)
-        self.query_dict = self.filter_query(query)   
-        try:
-            # we can now parse the query
-            # SEE pyparser.py to understand more
-            evalStack = (searchExpr + stringEnd).parseString(query)[0]
-            if self.debug: print "Eval stack:", evalStack, type(evalStack)
-            evalExpr = evalStack.generateSetExpression()    # GENERATE QUERY
-            if self.debug: print "Eval expr:", evalExpr
-            
-            result_key = eval(evalExpr)
-
-            # REAP THE RESULTS
-            self.pipe.zrevrange(result_key, 0, self.limit -1, withscores=True) # bring by index, at most "limit" of them, in descending order
-            res =  self.flush() 
-            self.remove_temp_keys() # REMOVE TEMPORARY KEYS FROM THE INDEX ( involves flush() )            
-                  
-            return res[-1] # the result lies in the last item !!
-        except ParseException, pe:
-            if self.debug: print "Search string with no boolean stuff"
-            return None
+        query_base.QueryBase.__init__(self,  **kwargs)  
 
 
-    def transform_into_boolean_query(self, query):
-        ''' adds an AND to terms if not any'''
-        def add_and(term1, term2):
-            if term1.split()[-1] not in ["and", "or", "not"] and term2 not in ["and", "or", "not"]:
-                return term1 + " and " + term2
-            else:
-                return term1 + " " + term2
-            
-        if self.debug: print "transform_into_boolean_query -->", reduce(add_and,query.split()) 
-        return reduce(add_and,query.split())     
 
- 
     def exec_single_query(self, query):
         ''' optimized for a single query '''
         if self.debug: print "In exec single query"
         return self.db.zrevrange(query, 0, self.limit - 1 , withscores=True)
     
+#############################################################################################################
+# VECTOR RETRIEVAL 
+#############################################################################################################
 
-    def filter_query(self,query):
+    def vector_retrieval(self, term_list):
         ''' 
-            Returns a dictionary like term: term:{idf:0.34} or term:None if term not in our INDEX
+        A function to perform vector space model retrieval
+        Intersects all docIDs for every term in term_list
+        Calculates and sums tf-idf for every such docID
+        Performs an additional proximity ranking and sums it with tf-idf
         '''
-        # first, remove all boolean operator and fix whitespaces and parenthesis
-        filtered_query_list = [i.strip().replace("(","").replace(")","") for i in re.split(' +and +| +or +|not +', query) if i]
-        if self.debug: print "FILTERED QUERY LIST : " , filtered_query_list
-        
-        # let the pipelining begin
-        self.pipe.hget(self._dict_key, "CCAARRDDIINNAALLIITTYY")
-        for term in filtered_query_list:  
-            self.pipe.hget(self._dict_key, term) 
-        
-        res = self.flush()  # gather every result of the pipeline
-        # res[0] is cardinality and the rest the idfs of every term
-        for i in range(1, len(res)):
-            if res[i]: self.query_dict[filtered_query_list[i-1]] = math.log( float(res[0])/float(res[i])) #dict( ( ("idf", math.log( float(res[0])/float(res[i])) ), ) ) 
-            else: self.query_dict[filtered_query_list[i-1]] = None
-        if self.debug: print "QUERY DICT :" , self.query_dict
-        return self.query_dict   
+        if self.debug: print "performing vector retrieval on " , term_list
 
+        query_key = "".join([term for term in term_list]) 
+        self.temporary_keys.append(query_key)
+        
+        term_dicts = self.get_terms_from_cache(term_list)  
+        
+        #to perform intersection we must sort term_dicts by length
+        term_dicts_sorted = sort_by_attr(term_dicts, "DF", reverse=False)   
+       
+        mysets = (set(x.keys()) for x in term_dicts_sorted)
+        
+        doc_ids = reduce(lambda a,b: a.intersection(b), mysets)
+        
+        try: doc_ids.remove("DF")
+        except: pass
+        
+        final_score_dict = dict((k,0.0) for k in doc_ids)
+        
+
+        # process dictionaries (redis hashes) and split tfs and positions    
+        pos_dict = {}
+        for j in xrange(0,len(term_dicts)):
+            temp_dict = {}
+            for k in term_dicts[j]:
+                if k in doc_ids:
+                    spl = term_dicts[j][k].split(",")
+                    temp_dict[k] = float(spl[0]) * self.query_dict[term_list[j]]    # calculate tf-idf for doc_id k on the fly
+                    final_score_dict[k] += temp_dict[k]    
+                    try:
+                        pos_dict[k].append([int(i) for i in spl[1:]])   # also screen positions
+                    except: 
+                        pos_dict[k] = [[int(i) for i in spl[1:]]]
+  
+        # do proximity ranking, if we must
+        if self.query_dict["$FILTER"] == "full_search":
+            for k in pos_dict:
+                final_score_dict[k] *= self.proximity_rank(pos_dict[k])
+                    
+        self.query_dict[query_key] = sorted(final_score_dict.iteritems(), key=itemgetter(1), reverse=True)
+            
+        return query_key
+    
+       
+#############################################################################################################
+# BASIC BOOLEAN OPERATIONS , INTERSECTION, UNION, DIFFERENCE
+#############################################################################################################
 
     def intersect(self, term_list):
         ''' 
-        Intersects all sorted sets for every term in kwargs
-        NOTE: no need for optimization, redis takes care of this
+        Intersects all docIDs for every term in term_list
         '''
         if self.debug: print "performing intersection on " , term_list
-        # TODO dangerous, must ensure no duplicate query_keys , idea, every object has a unique id, append it on the query key
-        query_key = "".join([term for term in term_list])   # construct a temporary key for zunionstore 
-        self.temporary_keys.append(query_key)   # append it for deletion later
-        # also add it to self.query_dict for possible later use
-        self.query_dict[query_key] = 1#dict( ( ("idf", 1), ("action", "delete_from_cache")   )  )
-        # check to see if any term does not exist in our INDEX
-        # in such a case, return the query_key without performing any intersections
-        for key in term_list:
-            if self.query_dict[key] == None:
-                if self.debug: print "empty set"
-                return query_key
-            
-        temp_dict = dict((k,self.query_dict[k]) for k in term_list if k in self.query_dict) # construct a sub-set of self.query_dict for the terms in term_list 
-        self.pipe.zinterstore(query_key, temp_dict) # intersect all the sorted sets for every query term, with weight multiplication (tf-idf on the fly)
-        
-        return query_key    # return query_key, it might be used for another operation
-            
+ 
+        doc_ids = reduce(lambda a,b: a.intersection(b), self.get_terms_sets(term_list, sorted = True))
+
+        return self.manage_set_operation(term_list, doc_ids)
 
 
+            
     def union(self, term_list):
         ''' 
-        Unions all sorted sets for every term in kwargs
+        Unions all docIDs for every term in term_list
         '''
-        if self.debug: print "performing union on " , term_list
-        
-        query_key = "".join([term for term in term_list])   # construct a temporary key for zunionstore
-        self.temporary_keys.append(query_key)
-        self.query_dict[query_key] = 1   # also add it to self.query_dict for possible later use
-        temp_dict = dict((k,self.query_dict[k]) for k in term_list if k in self.query_dict) # construct a sub-set of self.query_dict for the terms in term_list
-        
-        self.pipe.zunionstore(query_key, temp_dict) # union all the sorted sets for every query term, with weight multiplication (tf-idf on the fly)
-        
-        return query_key    # return query_key, it might be used for another operation
+        if self.debug: print "performing union on " , term_list 
+
+        doc_ids = reduce(lambda a,b: a.union(b), self.get_terms_sets(term_list))
+
+        return self.manage_set_operation(term_list, doc_ids)
 
 
-    def diff(self, term):
+
+    def diff(self, term_list):
         ''' 
-        Here, we must calculate the difference of two sorted sets. THIS IS NOT SUPPORTED DIRECTLY BY REDIS, so let the hack begin..
+        Provides difference operation on all docIDs for every term in term_list
         '''
-        if self.debug: print "performing difference on " , term
-        diff_key = term + "diffkey"
-        members = self.db.zrange(term, 0, -1, withscores=False)
-        for m in members:
-            self.db.sadd(diff_key, m)
-            
-        difference = self.db.sdiff("DDOOCCIIDDSS", diff_key)    
-        self.db.delete(diff_key)
-        for diff in difference:
-            self.db.zadd(diff_key, diff, 1)    
-            
-        self.temporary_keys.append(diff_key)
-        self.query_dict[diff_key] = 1      
-               
-        return diff_key    
+        if self.debug: print "performing difference on " , term_list          
+        
+        self.pipe.smembers(self._set_key)   # get all docIDs
+
+        doc_ids = reduce(lambda a,b: a.union(b),  self.get_terms_sets(term_list))
+
+        return self.manage_set_operation(term_list, doc_ids)
+ 
+
 
 
     def remove_temp_keys(self):
@@ -179,3 +157,107 @@ class QueryHandler(index_base.IndexBase):
             if self.debug : print "deleting key: " , key
             self.pipe.delete(key)
         self.flush()
+        
+
+#############################################################################################################
+# RANKING FUNCTIONS
+#############################################################################################################  
+
+     
+    def proximity_rank(self, list_of_lists):  
+        '''
+        A ranking function that calculates a score for words' proximity.
+        This score is defined as the sum of 1/Prox for every continuous matches of them.
+        Prox is a number indicating how close the words are
+        
+        example: for words A and B, their postings are [1,4,10] and [2,6,17]
+        
+                 then score = 1/(2 - 1 + 1) + 1/(6 - 4 + 1) + 1/(17 - 10 + 1)
+        '''
+        def sub(*args):
+            return reduce(lambda x, y: y-x, args )
+        
+        _len = len(list_of_lists) - 1
+        
+        score = 0
+       
+        while True: 
+            
+            try:
+                # get all heads
+                _tuple = [i.pop(0) for i in list_of_lists]
+            
+                for i in xrange(1,len(_tuple)):
+                    # ensure we keep order of postings
+                    while _tuple[i] - _tuple[i-1] < 0:
+                        _tuple.pop(i)
+                        _tuple.insert(i, list_of_lists[i].pop(0))
+                
+                score_vector =  [i - _len for i in map(sub, _tuple)]       
+                #print _tuple  , score_vector[-1] - score_vector[0] - _len + 1
+                score += 1.0/(score_vector[-1] - score_vector[0] - _len + 1) # ensure no division with 0
+
+            except: break
+        
+        return score
+
+
+#############################################################################################################
+# HELPER FUNCTIONS
+#############################################################################################################  
+
+    def get_terms_from_cache(self, term_list):
+        '''
+        Helper piped function to fetch dictionaries of term stuff from cache
+        '''
+        for term in term_list:
+            self.pipe.hgetall(self.stemmer.stem_word(term.lower()))
+        #return self.flush()
+        # hmmm, well , provide some fault tolerance, still seek through the rest if a term or more was not found
+        return [ i for i in self.flush() if i!={}]
+ 
+
+    def get_terms_sets(self, term_list, sorted=False):
+        '''
+        Helper piped function to fetch dictionaries of term stuff from cache
+        However, sometimes term_list contains temporary query keys from previous calculations
+        We have to resolve this issue, by additional checks
+        Used only in the boolean model
+        '''
+        for term in term_list:
+            self.pipe.hgetall(term)
+        
+        res = self.flush()
+        set_list = []  
+          
+        for i in range(0,len(res)):
+            if res[i] == []:     # either not present in cache or a mixed query key in self.query_dict
+                try: set_list.append(self.query_dict[term_list[i]]) 
+                except: set_list.append(set())      # boolean queries MUST BE strict
+            else:
+                try: 
+                    _set = set()
+                    _set.update(res[i].keys())     # from dict
+                    set_list.append(_set)
+                except:
+                    set_list.append(res[i])       # from set      
+                 
+        if sorted:  set_list.sort(key=len)  # sort by length, yeah
+                  
+        return set_list 
+
+
+    def manage_set_operation(self, term_list, doc_ids):
+        '''
+        Helper function that constructs a temporary key, updates self.temporary_keys,
+        adds it in self.query_dict for further use and returns it
+        '''
+        try: doc_ids.remove("DF")
+        except: pass
+        
+        query_key = "".join([term for term in term_list]) 
+        self.temporary_keys.append(query_key)   
+        # also add it to self.query_dict for possible later use
+        self.query_dict[query_key] = doc_ids
+
+        return query_key       
