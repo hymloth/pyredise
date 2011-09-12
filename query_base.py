@@ -37,7 +37,7 @@ class QueryBase(index_base.IndexBase):
         limit : at most results to return
         query_dict : helper dict containing terms : terms-idf
         temporary_keys : list holding temporary keys to delete later
-	    filters : dictionary holding regexes to categorize query 
+	filters : dictionary holding regexes to categorize query 
         debug : whether to print messages for debugging purposes
         stemmer : Porter stemmer for words preprocessing
         stopwords : common words to exclude from indexing
