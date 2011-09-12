@@ -41,7 +41,7 @@
 import redis
 import corpus_handler
 
-db=redis.Redis(host='localhost', port=6379, db=0)
+
 kwargs = {}
 kwargs["db"] = redis.Redis(host='localhost', port=6379, db=0)
     	
