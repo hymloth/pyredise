@@ -4,4 +4,7 @@
 .pydevproject
 test.py
 .settings
+build
+dist
+usr
 
