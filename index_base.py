@@ -35,18 +35,16 @@ class IndexBase(object):
        pipe : redis pipeline object
        
 
-    NOTE1: this class (and its descendants) is not thread-safe, thus create a new object every time you need its functionality, per process/thread.
-           DO NOT EVER SHARE SUCH AN OBJECT !!!
+    NOTE: this class (and its descendants) is not thread-safe, thus create a new object every time you need its functionality, per process/thread.
+          DO NOT EVER SHARE SUCH AN OBJECT !!!
     
-    NOTE2: for persistence and consistency, you must follow NOTE1 plus configure your redis server instance ( the db parameter at __init__ ) accordingly
-            ( use VirtualMemory, so that a term is never missed-------- )
-            
+
     '''
     
     def __init__(self, **kwargs):
         ''' just initialize the attributes '''
-        self._cardinality_key = kwargs.get('cardinality_key',"CARDINALITY") 
-        self._set_key = kwargs.get('set_key',"DOCIDS")
+        self._cardinality_key = kwargs.get('cardinality_key',"$CARDINALITY$") 
+        self._set_key = kwargs.get('set_key',"$DOCIDS$")
         self.db = kwargs.get('db',"") 
         self.pipe = self.db.pipeline()
         

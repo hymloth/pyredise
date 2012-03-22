@@ -16,21 +16,39 @@
 # limitations under the License.
 
 
-import index_base
-import math
+import index_handler
+
+
 import re
-from pyparser import *
-import query_base
-from operator import itemgetter
+import itertools
+import operator
+
+from nltk.stem.porter import PorterStemmer
+import fast_regex.stringcheck as stringcheck# super fast, C extension, returns True for alphanumerics only and non stopwords
+
+
+try:
+    import msgpack
+    serializer = msgpack
+except:
+    import json
+    serializer = json
 
 
 
-def sort_by_attr(t, attr, reverse = True):
-    '''sorts a list of dicts by given attribute, returns a list'''
-    return sorted(t, key=itemgetter('%s'%attr), cmp = lambda x, y:cmp(int(x),int(y)), reverse=reverse)
 
 
-class QueryHandler(query_base.QueryBase):
+FILTERS = {
+           "complete": re.compile("/complete"),
+           "pure_tfidf" : re.compile("/pure_tfidf"),
+           "title_only" : re.compile("/title_only")
+           }
+           
+
+
+
+
+class QueryHandler(index_handler.IndexHandler):
     '''
     A class that handles queries upon our INDEX.
     
@@ -39,126 +57,201 @@ class QueryHandler(query_base.QueryBase):
     '''
     
     def __init__(self, **kwargs):
-        query_base.QueryBase.__init__(self,  **kwargs)  
+        index_handler.IndexHandler.__init__(self,  **kwargs)    
+        self.limit = kwargs.get('limit',10) 
+        self.query = "" 
+        self.filters = set()
+        self.known_filters = FILTERS
+        self.debug = kwargs.get('debug',True)         
+        self.stemmer = PorterStemmer()
+        self.res_cache_db = kwargs.get('res_cache_db',None)  
+        self.res_cache_exp = kwargs.get('res_cache_exp',100)
+        self.serializer = serializer
+        self.tfidf_w = kwargs.get('tfidf_w',0.33)
+        self.title_w = kwargs.get('title_w',0.33)
+        self.posting_w = kwargs.get('posting_w',0.33)
 
+
+    def clear(self):
+        self.filters = set()
+        self.query = ""         
+ 
+        
+    def process_query(self, query):
+        ''' entry point for query processing '''
+        
+        self.clear()
+        initial_query = query
+        self.query = query
+        if self.debug: print "INITIAL QUERY:", initial_query
+        
+        self.apply_filters()
+        self.clean_stem_query()
+                   
+        if len(self.query.split()) == 1:             
+            res = self.exec_single_query(self.query)    
+        elif "title_only" in self.filters:             
+            res = self.get_titles(self.query.split())                
+        else:                                           
+            weighted_terms = self.filter_query()   
+            res = self.vector_retrieval(weighted_terms)
+
+        if self.res_cache_db:
+            try:
+                self.res_cache_db.set(initial_query, self.serializer.dumps(res))
+            except:
+                raise Exception, "CACHING SEARCH RESULT FAILED, UNREACHABLE DB"    
+
+        return res
+
+
+
+    def apply_filters(self):
+        for i in self.known_filters:   
+            if re.search(self.known_filters[i], self.query.split()[-1]):
+                self.filters.add(i)
+                self.query = re.sub(self.known_filters[i],"",self.query)   
+                 
+        if self.debug: print "WITH FILTERS:", self.filters        
+        if not len(self.filters): self.filters.add("complete")
+        
+        
+
+    def clean_stem_query(self):
+        q = ""
+        for token in re.sub(r"[.,:;\-!?\"']", " ", self.query).split():
+            try: 
+                lower = token.lower()
+                if stringcheck.check(lower):
+                    q += self.stemmer.stem_word(lower) + " "         
+            except: 
+                if self.debug: print "Probable unicode error in stemming query"  
+                
+        self.query = q    
+        if self.debug: print "STEMMED QUERY:", self.query
+
+
+
+    def filter_query(self):
+        ''' 
+        Discovers document frequencies of query terms
+        Returns a list of tuples of all terms that appear in the index
+        Format = (term,df)
+        '''
+        return self.get_dfs(self.query.split())
 
 
     def exec_single_query(self, query):
         ''' optimized for a single query '''
         if self.debug: print "In exec single query"
-        return self.db.zrevrange(query, 0, self.limit - 1 , withscores=True)
-    
-#############################################################################################################
-# VECTOR RETRIEVAL 
-#############################################################################################################
+        if "title_only" in self.filters:
+            return [(i,1) for i in self.db.smembers("T%s"%query.strip())]
+        else:    
+            return self.db.zrevrange(query.strip(), 0, self.limit - 1 , withscores=True)
 
-    def vector_retrieval(self, term_list):
+
+    def get_titles(self, term_list):
+        docs = list(self.db.sinter(["T%s"%term for term in term_list]))
+        if docs:
+            for term in term_list:  
+                self.pipe.hmget("&T%s"%term, docs)
+                
+                
+            ranked = []    
+            for i, v in enumerate(itertools.izip_longest(*self.flush())): 
+                score = 0
+                for j in xrange(len(v) - 1):
+                    score += 1.0/(float(v[j+1]) - float(v[j]))
+                ranked.append((docs[i], score))
+                
+            return sorted(ranked, key=operator.itemgetter(1), reverse=True)
+        
+        return []
+
+
+    def vector_retrieval(self, weighted_terms):
         ''' 
-        A function to perform vector space model retrieval
+        A function to start vector space model retrieval
         Intersects all docIDs for every term in term_list
-        Calculates and sums tf-idf for every such docID
-        Performs an additional proximity ranking and sums it with tf-idf
+        Returns sorted tfidf-weighted docids
         '''
-        if self.debug: print "performing vector retrieval on " , term_list
+        if self.debug: print "performing vector retrieval on " , weighted_terms
+        terms = [i[0] for i in weighted_terms]
+        query_key = "".join(terms)
 
-        query_key = "".join([term for term in term_list]) 
-        self.temporary_keys.append(query_key)
+        self.pipe.zinterstore(query_key, dict(weighted_terms))
+        self.pipe.zrevrange(query_key, 0, self.limit - 1 , withscores=True)
         
-        term_dicts = self.get_terms_from_cache(term_list)  
+        doc_ids = self.flush()[1]
+        if not len(doc_ids):
+            return None
         
-        #to perform intersection we must sort term_dicts by length
-        term_dicts_sorted = sort_by_attr(term_dicts, "DF", reverse=False)   
-       
-        mysets = (set(x.keys()) for x in term_dicts_sorted)
-        
-        doc_ids = reduce(lambda a,b: a.intersection(b), mysets)
-        
-        try: doc_ids.remove("DF")
-        except: pass
-        
-        final_score_dict = dict((k,0.0) for k in doc_ids)
+        return self.rank_results(doc_ids, terms) 
+
+
+            
         
 
-        # process dictionaries (redis hashes) and split tfs and positions    
-        pos_dict = {}
-        for j in xrange(0,len(term_dicts)):
-            temp_dict = {}
-            for k in term_dicts[j]:
-                if k in doc_ids:
-                    spl = term_dicts[j][k].split(",")
-                    temp_dict[k] = float(spl[0]) * self.query_dict[term_list[j]]    # calculate tf-idf for doc_id k on the fly
-                    final_score_dict[k] += temp_dict[k]    
-                    try:
-                        pos_dict[k].append([int(i) for i in spl[1:]])   # also screen positions
-                    except: 
-                        pos_dict[k] = [[int(i) for i in spl[1:]]]
+    def rank_results(self, doc_ids, terms):
+
+        if "pure_tfidf" in self.filters:
+            if self.debug: print "RESULTS ", doc_ids
+            return doc_ids
+
+        elif "complete" in self.filters:
+            
+            dids = list([i[0] for i in doc_ids])
+            
+            # rank by title
+            title_rank = self.get_title_hit(terms, dids)
+            
+            # must do proximity ranking
+            # get the posting lists
+            sh = self.get_postings(terms, dids) # actually, I wanted to name this "shit"
+
+            posting_rank = []
+
+            for v in itertools.izip_longest(*sh):      # decompose list of lists  
+
+                try: posting_rank.append( ( self.proximity_rank( self.unfold_postings([ [int(k) for k in j.split(",")] for j in v]) ) ) )
+                except: pass
+                
+            new_doc_ids = []
+            
+            for i, stuff in enumerate(doc_ids):
+
+                new_doc_ids.append( (stuff[0], self.weighted_ranking(tfidf=stuff[1], title=title_rank[i], posting=posting_rank[i] )) )    
+                
+            if self.debug: print "RESULTS " ,   sorted(new_doc_ids, key=operator.itemgetter(1), reverse=True)
+            
+            return sorted(new_doc_ids, key=operator.itemgetter(1), reverse=True)
+        
+
+    
+    
+
+
   
-        # do proximity ranking, if we must
-        if self.query_dict["$FILTER"] == "full_search":
-            for k in pos_dict:
-                final_score_dict[k] *= self.proximity_rank(pos_dict[k])
-                    
-        self.query_dict[query_key] = sorted(final_score_dict.iteritems(), key=itemgetter(1), reverse=True)
             
-        return query_key
-    
-       
-#############################################################################################################
-# BASIC BOOLEAN OPERATIONS , INTERSECTION, UNION, DIFFERENCE
-#############################################################################################################
-
-    def intersect(self, term_list):
-        ''' 
-        Intersects all docIDs for every term in term_list
-        '''
-        if self.debug: print "performing intersection on " , term_list
- 
-        doc_ids = reduce(lambda a,b: a.intersection(b), self.get_terms_sets(term_list, sorted = True))
-
-        return self.manage_set_operation(term_list, doc_ids)
-
-
-            
-    def union(self, term_list):
-        ''' 
-        Unions all docIDs for every term in term_list
-        '''
-        if self.debug: print "performing union on " , term_list 
-
-        doc_ids = reduce(lambda a,b: a.union(b), self.get_terms_sets(term_list))
-
-        return self.manage_set_operation(term_list, doc_ids)
-
-
-
-    def diff(self, term_list):
-        ''' 
-        Provides difference operation on all docIDs for every term in term_list
-        '''
-        if self.debug: print "performing difference on " , term_list          
-        
-        self.pipe.smembers(self._set_key)   # get all docIDs
-
-        doc_ids = reduce(lambda a,b: a.union(b),  self.get_terms_sets(term_list))
-
-        return self.manage_set_operation(term_list, doc_ids)
- 
-
-
-
-    def remove_temp_keys(self):
-        ''' deletes those temporary keys so far '''
-        for key in self.temporary_keys:
-            if self.debug : print "deleting key: " , key
-            self.pipe.delete(key)
-        self.flush()
         
 
 #############################################################################################################
 # RANKING FUNCTIONS
 #############################################################################################################  
 
-     
+
+    def weighted_ranking(self, **kwargs):
+        '''
+        kwargs carry the scores to be multiplied
+        '''
+        tfidf = kwargs.get('tfidf', 0)
+        title = kwargs.get('title', 0)
+        posting = kwargs.get('posting', 0)
+        
+        return tfidf*self.tfidf_w + title*self.title_w + posting*self.posting_w
+        
+
+
     def proximity_rank(self, list_of_lists):  
         '''
         A ranking function that calculates a score for words' proximity.
@@ -168,11 +261,19 @@ class QueryHandler(query_base.QueryBase):
         example: for words A and B, their postings are [1,4,10] and [2,6,17]
         
                  then score = 1/(2 - 1 + 1) + 1/(6 - 4 + 1) + 1/(17 - 10 + 1)
-        '''
+        '''        
         def sub(*args):
             return reduce(lambda x, y: y-x, args )
         
         _len = len(list_of_lists) - 1
+        
+        # add padding to shorter lists
+        biggest = max([len(i) for i in list_of_lists])
+        
+        for i in list_of_lists:
+            while len(i) != biggest:
+                i.insert(0,i[0])
+                
         
         score = 0
        
@@ -197,62 +298,35 @@ class QueryHandler(query_base.QueryBase):
         return score
 
 
+
+                
+
 #############################################################################################################
 # HELPER FUNCTIONS
 #############################################################################################################  
 
-    def get_terms_from_cache(self, term_list):
-        '''
-        Helper piped function to fetch dictionaries of term stuff from cache
-        '''
-        for term in term_list:
-            self.pipe.hgetall(self.stemmer.stem_word(term.lower()))
-        #return self.flush()
-        # hmmm, well , provide some fault tolerance, still seek through the rest if a term or more was not found
-        return [ i for i in self.flush() if i!={}]
  
-
-    def get_terms_sets(self, term_list, sorted=False):
-        '''
-        Helper piped function to fetch dictionaries of term stuff from cache
-        However, sometimes term_list contains temporary query keys from previous calculations
-        We have to resolve this issue, by additional checks
-        Used only in the boolean model
-        '''
-        for term in term_list:
-            self.pipe.hgetall(term)
+    def unfold_postings(self, list_of_lists):
+        ''' reverses gap encoding '''
+        new_list_of_lists = []
         
-        res = self.flush()
-        set_list = []  
-          
-        for i in range(0,len(res)):
-            if res[i] == []:     # either not present in cache or a mixed query key in self.query_dict
-                try: set_list.append(self.query_dict[term_list[i]]) 
-                except: set_list.append(set())      # boolean queries MUST BE strict
-            else:
-                try: 
-                    _set = set()
-                    _set.update(res[i].keys())     # from dict
-                    set_list.append(_set)
-                except:
-                    set_list.append(res[i])       # from set      
-                 
-        if sorted:  set_list.sort(key=len)  # sort by length, yeah
-                  
-        return set_list 
+        for _list in list_of_lists:
+            nlist = []
+            pos = 0
+
+            for p in _list:
+                pos += p
+                nlist.append(pos)
+                
+            new_list_of_lists.append(nlist)
+
+        return new_list_of_lists      
+   
 
 
-    def manage_set_operation(self, term_list, doc_ids):
-        '''
-        Helper function that constructs a temporary key, updates self.temporary_keys,
-        adds it in self.query_dict for further use and returns it
-        '''
-        try: doc_ids.remove("DF")
-        except: pass
-        
-        query_key = "".join([term for term in term_list]) 
-        self.temporary_keys.append(query_key)   
-        # also add it to self.query_dict for possible later use
-        self.query_dict[query_key] = doc_ids
 
-        return query_key       
+
+    
+
+
+

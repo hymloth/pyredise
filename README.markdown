@@ -3,16 +3,16 @@
 <p>
 <em>Features:</em>
 <ul>
-	<li>Dynamic insertion, deletion and inspection of documents in corpus, with automatic tf-idf handling</li>
-	<li>Vector space model document retrieval with a simple proximity ranking</li>	
-	<li>Boolean queries interface</li>
+	<li>Dynamic indexing of documents in corpus</li>
+	<li>Vector space model document retrieval</li>	
+	<li>Ranking with tf-idf scores, proximity, title</li>
 </ul>	
 </p>
 
 <p>
 <em>Dependencies:</em>
 <ul>
-	<li>redis 2.2.12</li>
+	<li>redis</li>
 	<li>redis-py (https://github.com/andymccurdy/redis-py)</li>
 	<li>nltk (Natural Language Toolkit)</li>
 </ul>	
@@ -41,21 +41,24 @@
 import redis
 import corpus_handler
 
-
-kwargs = {}
-kwargs["db"] = redis.Redis(host='localhost', port=6379, db=0)
+db = = redis.Redis(host='localhost', port=6379, db=0)
     	
-cp = corpus_handler.CorpusHandler(**kwargs)
+cp = corpus_handler.CorpusHandler(db=db)
 </code></pre>
 
 
 <ul>	
-	<li>Somehow, you must have some documents to feed the INDEX. Assuming that you solved this problem ( use simple files or an SQL server or xml feeds or...), you only need a document's id (doc_id) and its content to index a document</li>
+	<li>Somehow, you must have some documents to index. Then, 
+	you only need a document's id (doc_id), its title and its content.
+	</li>
 </ul>
 
 
 <pre><code>
-cp.add_document( doc_id , content.split() )
+#So you must provide a dictionary with the following format:
+doc = {"id":doc_id, "title":doc_title, "content":doc_content}
+
+cp.index( doc )
 </code></pre>
 		
 </p>		
@@ -65,18 +68,22 @@ cp.add_document( doc_id , content.split() )
 <em>Filters:</em>
 <ul>
 	<li>/pure_tfidf : ranking based only on tf-idf scheme </li>
+	<li>/title_only : title matching </li>
+	<li>/complete : ranking based on tf-idf scheme, proximity and title </li>
 </ul>	
 
 <pre><code>
 import query_handler
-QH = query_handler.QueryHandler(**kwargs) # for kwargs see above or in __init__
+import redis
+db = = redis.Redis(host='localhost', port=6379, db=0)
+QH = query_handler.QueryHandler(db=db)
 
 # issue some queries
 print QH.process_query("google security data /pure_tfidf") # ranking only according to tf-idf
 
-print QH.process_query("google security data") # tf-idf plus proximity ranking
+print QH.process_query("google security data /complete") # complete
 
-print QH.process_query("google and security or data") # a boolean query
+print QH.process_query("google security data /title_only") # search in titles
 
 </code></pre>
 </p>	

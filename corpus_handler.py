@@ -24,115 +24,230 @@ __authors__ = [
 
 import index_handler
 from nltk import PorterStemmer
-from nltk.corpus import stopwords
+from collections import defaultdict
+from fast_regex import stringcheck # super fast, C extension, returns True for alphanumerics only and non stopwords
+
+import re
+import json
 
 
 
-class CorpusHandler(dict, index_handler.IndexHandler):
-    '''
+class CorpusHandler(index_handler.IndexHandler):
+    '''    
     A class for dynamic manipulation of our corpus.
     
-    It provides methods for document insertion, deletion, inspection, which, in turn, update all
+    It provides methods for document insertion and deletion which, in turn, update all
     relevant INDEX stuff in the background.
     
-    Attributes :
-    
-        cnt : keeps track of positions
-        debug : whether to print messages for debugging purposes
-        stemmer : Porter stemmer for words preprocessing
-        stopwords : common words to exclude from indexing    
-    
     '''
+    
+
     
     def __init__(self, **kwargs):
         index_handler.IndexHandler.__init__(self, **kwargs)
-        self.cnt = 0 
-        self.debug = kwargs.get('debug',True)
-        self.stemmer = PorterStemmer()
-        self.stopwords = stopwords.words('english')
-
-    def __setitem__(self, key, value, update_index=False):
-        '''
-        Overrides the default dict method.
-        Modified to update the INDEX, if update_index==True
-        ( and acts as a Counter, see collections.Counter in STL )
-        '''
-        if key in self: # if already seen, just add position in document
-            a = self[key]
-            a.append(value)
-            del self[key]
-        else: # first time encountered, update INDEX
-            a = []
-            a.append(value)
-            if update_index: self.update_term_idf(key,value=1) 
-        dict.__setitem__(self, key, a)
         
+        self.debug = kwargs.get('debug', False)
+        self.stem = PorterStemmer().stem_word
+        self.pos = defaultdict(list)
+        self.sanitized_text = []
+        self.doc_len = 0
+        self.delimiter = "!"
         
-    def add_document(self, doc_id, doc_list):
-        ''' Updates INDEX with a (split) document, returns success of operation '''
-         
-        self.clear_all()
 
-        if not self.doc_id_exists(doc_id):
-            self.add_doc_id(doc_id) 
-            for i in doc_list:
-                if i.lower() not in self.stopwords: 
-                    self.__setitem__(self.stemmer.stem_word(i.lower()), value = self.cnt, update_index=True) # remember, it involves redis pipelining
-                self.cnt += 1
-            # update posting list
-            length = len(doc_list)    
-            for term in self.keys(): 
-                term_frequency = float(len(self.__getitem__(term)))/length
-                value = str(term_frequency) + ", " +  ", ".join([str(i) for i in self.__getitem__(term)])
-                self.term_add_doc_id(term, doc_id, value)
 
-            self.update_cardinality()
-            self.flush()
-            return True
-        else:
-            if self.debug: print "This docID already exists in our corpus"       
-            return False        
-    
+
+    def update_pos(self, item, pos):
+        try: gap = pos - self.pos[item][-1]
+        except: gap = pos
+        self.pos[item].append(str(gap))
+        
+
+
+    def content_indexer(self, doc, doc_id,  index=True):
+
+        for i, token in enumerate(re.sub(r"[.,:;!\-?\"']", " ", doc).split()):
+            lower = token.lower()
+            try: # no encoding errors
+                if stringcheck.check(lower):
+                    item = self.stem(lower)
+                    self.update_pos(item, i)
+                    self.sanitized_text.append(item)
+            except: 
+                if self.debug: print "Probable unicode error"  
+                
+        self.doc_len = len(self.sanitized_text)  
+        
+        if index:
+            for term, posting in self.pos.iteritems():     
+                self.term_add_doc_id(term,  doc_id, float(len(posting))/self.doc_len )   
+                self.term_add_doc_id_posting(term,  doc_id, ",".join(posting) )   
+                
+        else: # remove from index                  
+            for term, posting in self.pos.iteritems():     
+                self.term_remove_doc_id(term, doc_id)   
+                self.term_remove_doc_id_posting(term, doc_id)          
+ 
+              
+    def title_indexer(self, title, doc_id, index=True):
+
+        for i, token in enumerate(re.sub(r"[.,:;\-!?\"']", " ", title).split()):
+            lower = token.lower()
+            try: # no encoding errors
+                if stringcheck.check(lower):
+                    item = self.stem(lower)
+                    
+                    if index: 
+                        self.term_add_doc_id_title(item, doc_id)
+                        self.term_add_doc_id_title_posting(item, doc_id, i)
+                    else: 
+                        self.term_remove_doc_id_title(item, doc_id)
+                        self.term_remove_doc_id_title_posting(item, doc_id)
+                    
+            except: 
+                if self.debug: print "Probable unicode error"  
+     
    
-    def eat_document_spit(self, doc_list):
-        '''
-         given a split document it returns a string with format: term1:term1-tf-idf:term2:term2-tf_idf:.... 
-         NOTE: update_index must be False ( AS TO NOT UPDATE THE "INDEX" )
-        '''
-        
-        self.clear_all()
-        
-        for i in doc_list:
-            if i.lower() not in self.stopwords:
-                self.__setitem__(self.stemmer.stem_word(i.lower()), value = 1, update_index=False) # remember, it DOES NOT involve redis pipelining
-        idfs = self.piped_get_idf(doc_list)
+             
+    def index(self, doc, **kwargs):
 
-        length = len(doc_list)
-        tf_idf_list = "".join( [(doc_list[i]+ ":" + str( idfs[i]*float( self.__getitem__(doc_list[i]) )/float(length) ) + ":") for i in range(length) ] ) 
-        return tf_idf_list 
-  
+        doc_id = str(doc["id"])
+        title = doc["title"]
+        content = doc["content"]
+        
+        self.clear()
+        
+        if not self.doc_id_exists(doc_id):        
+            self.add_doc_id(doc_id)
+            self.content_indexer(content, doc_id, index=True)
+            self.title_indexer(title, doc_id, index=True)
+            self.update_cardinality()
+            self.flush() # at this point, the INDEX has been updated
+            return True                
+        else:
+            if self.debug: print "This docID already exists in our corpus!"      
+            return False
     
-    def remove_document(self, doc_id, doc_list):
-        ''' removes a document from INDEX , returns success of operation '''
+    
+    
+    def extract_features(self, **kwargs):
+        '''
+        Extracts vital info from current document
+        Up to features_limit in length
+        Using a tfidf threshold to filter the top of them
+        '''
+        export_value = kwargs.get('export', json.dumps)
+        tfidf_threshold_absolute = kwargs.get('tfidf_threshold_absolute', 0.0000001)
+        features_limit = kwargs.get('features_limit', 500)
+        rnd = kwargs.get('rnd', 4)
+        doc = kwargs.get('doc', None)
+        
+        # just in case, we chech if we have to re-tokenize the doc
 
-        self.clear_all()
+        if not len(self.sanitized_text):
+            if doc is None: 
+                raise Exception, " No document given !! "
 
-        if self.doc_id_exists(doc_id):        
-            for i in set(doc_list): 
-                if i.lower() not in self.stopwords:
-                    self.term_remove_doc_id(self.stemmer.stem_word(i.lower()), doc_id) # remember, it involves redis pipelining
-                    self.update_term_idf(value = -1)
-            self.update_cardinality(value = -1) # adjust cardinality
-            self.flush() # update all 
+            for i, token in enumerate(re.sub(r"[.,:;!\-?\"']", " ", doc).split()):
+                lower = token.lower()
+                try: 
+                    if stringcheck.check(lower):
+                        item = self.stem(lower)
+                        self.update_pos(item, i)
+                        self.sanitized_text.append(item)
+                except: 
+                    if self.debug: print "Probable unicode error"  
+                                
+            self.doc_len = len(self.sanitized_text)    
+        
+        idfs = [i[1] for i in self.get_dfs(self.sanitized_text)]
+
+        tfidf_tuple_list = []
+        adapt_features = []
+        
+        for i in xrange(min(self.doc_len, len(idfs), features_limit)):
+            tfidf = len(self.pos[self.sanitized_text[i]]) * idfs[i] / self.doc_len
+            tup = (self.sanitized_text[i], str(round(tfidf , rnd)), i)
+            tfidf_tuple_list.append(tup)
+            
+            if tfidf > tfidf_threshold_absolute: adapt_features.append(tup)
+        
+        self.clear()
+        return export_value(tfidf_tuple_list), export_value(adapt_features)        
+        
+        
+        
+
+
+    def remove_document(self, doc, **kwargs):
+        
+        doc_id = str(doc["id"])
+        title = doc["title"]
+        content = doc["content"]
+        
+        self.clear()
+
+        if self.doc_id_exists(doc_id):  
+            self.remove_doc_id(doc_id)
+            self.content_indexer(content, doc_id , index=False) 
+            self.title_indexer(title, doc_id, index=True)
+            self.update_cardinality(value= -1) # adjust cardinality
+            self.flush() # at this point, the INDEX has been updated 
             return True
         else:
-            if self.debug: print "Removal Failed: This docID does not exist in our corpus" 
+            if self.debug: print "Removal Failed: This docID does not exist in our corpus!" 
             return False
+ 
+
+
+    def clear(self):
+        self.pos = defaultdict(list)
+        self.sanitized_text = []
+        self.doc_len = 0
 
 
 
-    def clear_all(self):
-        self.clear()
-        self.cnt = 0
 
 
+if __name__=="__main__":
+    import redis , time
+    db = redis.Redis(host='localhost', port=6666, db=3)
+    
+    from noocore.models.mongo_models import Article    
+    from mongoengine import connect
+
+
+    
+    DATABASE = "nootropia"
+    USERNAME = "dummy"
+    PASSWORD = "dummy"
+    
+    connect(DATABASE, USERNAME, PASSWORD) # connect to mongodb    
+    
+    cp = CorpusHandler(debug=True, db=db)
+    cp.drop()
+    
+    articles = Article.objects(category="Technology").order_by("-date_added")[:1000]
+    #articles = Article.objects(title="Introducing Windows 8 Consumer Preview")
+    start = time.time()
+    for n, i in enumerate(articles):
+        print n
+        cp.index(i)
+    #cp.multi_index(articles, batch=500)
+    elapsed = time.time() - start
+    print "indexing took %s for %s documents" %( elapsed, articles.count())
+    
+    '''start = time.time()
+    for i in articles:
+        cp.remove_document(i)
+    #cp.multi_index(articles, index=False)    
+    elapsed = time.time() - start
+    print "Deindexing took %s for %s documents" %( elapsed, articles.count())'''
+
+    '''article = Article.objects(title="Portabliss: Tales from Space: Mutant Blobs Attack (Vita)")[0]
+    a = cp.extract_features(doc=article.content)
+    print a[0]
+    print a[1]
+
+    print "ok"'''
+    
+    
