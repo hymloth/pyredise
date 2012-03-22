@@ -9,7 +9,7 @@ $ sudo python setup.py install
 
 
 <p>
-<em>Features:</em>
+<b>Features:
 <ul>
 	<li>Dynamic, fast indexing/removal of documents</li>
 	<li>Vector space model document retrieval</li>	
@@ -18,7 +18,7 @@ $ sudo python setup.py install
 </p>
 
 <p>
-<em>Dependencies:</em>
+<b>Dependencies:
 <ul>
 	<li>redis</li>
 	<li>redis-py (https://github.com/andymccurdy/redis-py)</li>
@@ -28,7 +28,7 @@ $ sudo python setup.py install
 
 
 	
-<em>Instructions:</em>
+<b>Instructions:
 
 <p>	
 <ul>
@@ -68,7 +68,7 @@ cp.index( doc )
 
 
 <p>
-<em>Filters:</em>
+<b>Filters:
 <ul>
 	<li>/pure_tfidf : ranking based only on tf-idf scheme </li>
 	<li>/title_only : title matching </li>
@@ -91,7 +91,7 @@ print QH.process_query("google security data /title_only") # search in titles
 </code></pre>
 </p>	
 
-
+<br>
 <p>
 For those who haven't noticed, pyredise is named in honor of PY(thon)REDI(s)S(earch)E(ngine)
 </p>
