@@ -18,12 +18,7 @@
 </ul>	
 </p>	
 
-<p>
-<em>TODO:</em>
-<ul>
-	<li>add more filters for more specialized queries (by date, by external ranking etc..)</li>
-</ul>	
-</p>
+
 	
 <em>Instructions:</em>
 
@@ -78,7 +73,7 @@ import redis
 db = = redis.Redis(host='localhost', port=6379, db=0)
 QH = query_handler.QueryHandler(db=db)
 
-# issue some queries
+# issue some queries, returning a list of tuples such as [(doc_id1, score1), (doc_id2, score2), ...]
 print QH.process_query("google security data /pure_tfidf") # ranking only according to tf-idf
 
 print QH.process_query("google security data /complete") # complete
@@ -87,3 +82,8 @@ print QH.process_query("google security data /title_only") # search in titles
 
 </code></pre>
 </p>	
+
+
+<p>
+For those who haven't noticed, pyredise is named in honor of PY(thon)REDI(s)S(earch)E(ngine)
+</p>
