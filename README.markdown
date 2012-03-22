@@ -1,5 +1,5 @@
 <p>A simple and fast search engine based on python and redis</p>
-
+<br>
 <p><b>Installation</b></p>
 <pre><code>	
 $ git clone git@github.com:hymloth/pyredise.git
@@ -7,7 +7,7 @@ $ cd pyredise
 $ sudo python setup.py install
 </code></pre>
 
-
+<br>
 <p>
 <b>Features:</b>
 <ul>
@@ -17,6 +17,7 @@ $ sudo python setup.py install
 </ul>	
 </p>
 
+<br>
 <p>
 <b>Dependencies:</b>
 <ul>
@@ -27,7 +28,7 @@ $ sudo python setup.py install
 </p>	
 
 
-	
+<br>	
 <b>Instructions:</b>
 
 <p>	
@@ -66,7 +67,7 @@ cp.index( doc )
 		
 </p>		
 
-
+<br>
 <p>
 <b>Filters:</b>
 <ul>
