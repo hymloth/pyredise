@@ -3,4 +3,5 @@
 .project
 .pydevproject
 test.py
+.settings
 
