@@ -42,7 +42,6 @@ class IndexBase(object):
     '''
     
     def __init__(self, **kwargs):
-        ''' just initialize the attributes '''
         self._cardinality_key = kwargs.get('cardinality_key',"$CARDINALITY$") 
         self._set_key = kwargs.get('set_key',"$DOCIDS$")
         self.db = kwargs.get('db',"") 
@@ -53,7 +52,7 @@ class IndexBase(object):
         return self.pipe.execute()
     
     def drop(self):
-        ''' must be never called '''
+        ''' drops the entire index '''
         return self.db.flushdb()   
 
 

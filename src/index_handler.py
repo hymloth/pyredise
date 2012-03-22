@@ -94,10 +94,6 @@ class IndexHandler(index_base.IndexBase):
     
       
     def get_dfs(self, term_list):
-        ''' piped version of the above . 
-        Because execution of the pipeline is atomic, it is guaranteed that all duplicate or more terms
-        in term_list are assigned the same idf (cause in the meanwhile, no other client can call update_term_idf() )
-        '''
         self.pipe.get(self._cardinality_key)
         for term in term_list:  
             self.pipe.zcard(term)
@@ -110,7 +106,7 @@ class IndexHandler(index_base.IndexBase):
             if item not in [None,0] : s.append( (term_list[i], math.log( float(res[0])/float(item))  ) )
  
         return s    
-        #return [math.log( float(res[0])/float(i) ) for i in res[1:] if i not in [None,0]]
+
     
     
     def get_postings(self, term_list, docids_list):
@@ -121,8 +117,7 @@ class IndexHandler(index_base.IndexBase):
     
   
     
-    def get_title_hit(self, term_list, doc_ids_list):
-        
+    def get_title_hit(self, term_list, doc_ids_list):     
         _len = len(doc_ids_list)
         _sub_len = len(term_list)
         

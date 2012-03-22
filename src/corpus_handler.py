@@ -208,46 +208,5 @@ class CorpusHandler(index_handler.IndexHandler):
 
 
 
-if __name__=="__main__":
-    import redis , time
-    db = redis.Redis(host='localhost', port=6666, db=3)
-    
-    from noocore.models.mongo_models import Article    
-    from mongoengine import connect
-
-
-    
-    DATABASE = "nootropia"
-    USERNAME = "dummy"
-    PASSWORD = "dummy"
-    
-    connect(DATABASE, USERNAME, PASSWORD) # connect to mongodb    
-    
-    cp = CorpusHandler(debug=True, db=db)
-    cp.drop()
-    
-    articles = Article.objects(category="Technology").order_by("-date_added")[:1000]
-    #articles = Article.objects(title="Introducing Windows 8 Consumer Preview")
-    start = time.time()
-    for n, i in enumerate(articles):
-        print n
-        cp.index(i)
-    #cp.multi_index(articles, batch=500)
-    elapsed = time.time() - start
-    print "indexing took %s for %s documents" %( elapsed, articles.count())
-    
-    '''start = time.time()
-    for i in articles:
-        cp.remove_document(i)
-    #cp.multi_index(articles, index=False)    
-    elapsed = time.time() - start
-    print "Deindexing took %s for %s documents" %( elapsed, articles.count())'''
-
-    '''article = Article.objects(title="Portabliss: Tales from Space: Mutant Blobs Attack (Vita)")[0]
-    a = cp.extract_features(doc=article.content)
-    print a[0]
-    print a[1]
-
-    print "ok"'''
     
     
