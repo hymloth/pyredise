@@ -1,9 +1,17 @@
 <p>A simple and fast search engine based on python and redis</p>
 
+<p>Installation</p>
+<pre><code>	
+$ git clone git@github.com:hymloth/pyredise.git
+$ cd pyredise
+$ sudo python setup.py install
+</code></pre>
+
+
 <p>
 <em>Features:</em>
 <ul>
-	<li>Dynamic indexing of documents in corpus</li>
+	<li>Dynamic, fast indexing/removal of documents</li>
 	<li>Vector space model document retrieval</li>	
 	<li>Ranking with tf-idf scores, proximity, title</li>
 </ul>	
