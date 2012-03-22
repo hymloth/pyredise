@@ -1,6 +1,6 @@
 <p>A simple and fast search engine based on python and redis</p>
 
-<p><b>Installation</p>
+<p><b>Installation</b></p>
 <pre><code>	
 $ git clone git@github.com:hymloth/pyredise.git
 $ cd pyredise
@@ -9,7 +9,7 @@ $ sudo python setup.py install
 
 
 <p>
-<b>Features:
+<b>Features:</b>
 <ul>
 	<li>Dynamic, fast indexing/removal of documents</li>
 	<li>Vector space model document retrieval</li>	
@@ -18,7 +18,7 @@ $ sudo python setup.py install
 </p>
 
 <p>
-<b>Dependencies:
+<b>Dependencies:</b>
 <ul>
 	<li>redis</li>
 	<li>redis-py (https://github.com/andymccurdy/redis-py)</li>
@@ -28,7 +28,7 @@ $ sudo python setup.py install
 
 
 	
-<b>Instructions:
+<b>Instructions:</b>
 
 <p>	
 <ul>
@@ -68,7 +68,7 @@ cp.index( doc )
 
 
 <p>
-<b>Filters:
+<b>Filters:</b>
 <ul>
 	<li>/pure_tfidf : ranking based only on tf-idf scheme </li>
 	<li>/title_only : title matching </li>
