@@ -1,6 +1,6 @@
 <p>A simple and fast search engine based on python and redis</p>
 
-<p>Installation</p>
+<p><b>Installation</p>
 <pre><code>	
 $ git clone git@github.com:hymloth/pyredise.git
 $ cd pyredise
