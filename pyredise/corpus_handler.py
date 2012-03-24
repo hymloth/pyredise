@@ -189,7 +189,7 @@ class CorpusHandler(index_handler.IndexHandler):
         if self.doc_id_exists(doc_id):  
             self.remove_doc_id(doc_id)
             self.content_indexer(content, doc_id , index=False) 
-            self.title_indexer(title, doc_id, index=True)
+            self.title_indexer(title, doc_id, index=False)
             self.update_cardinality(value= -1) # adjust cardinality
             self.flush() # at this point, the INDEX has been updated 
             return True
