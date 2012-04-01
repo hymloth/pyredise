@@ -2,9 +2,7 @@
 <br>
 <p><b>Installation</b></p>
 <pre><code>	
-$ git clone git@github.com:hymloth/pyredise.git
-$ cd pyredise
-$ sudo python setup.py install
+sudo pip install pyredise
 </code></pre>
 
 <br>
