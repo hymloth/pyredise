@@ -98,13 +98,13 @@ print QH.process_query("google security data /title_only") # search in titles
 We keep sorted sets of the form ( term: [(doc_id, term_frequency_in_this_doc_id),...] ). 
 This way, we can intersect those sets while calculating the tf-idf score on the fly,
 by providing WEIGHTS (term document frequencies, which are actually the cardinality of each sorted set)
-
+<br>
 To do proximity ranking, we keep hashes of the form:
 	term:{ 
-		  doc_id: positions
+		  doc_id: positions, 
 		  doc_id: positions
 		 }
-		 
+<br> 
 We also keep a similar hash for the terms' positions in the title, as well as simple sets (term:(doc_ids..)) to perform intersections. 		 
 
 </p>
