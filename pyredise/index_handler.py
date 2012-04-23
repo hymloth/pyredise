@@ -42,7 +42,6 @@ class IndexHandler(index_base.IndexBase):
         
     def term_add_doc_id(self, term, value, score):
         '''
-	    value is "doc_id + ! + posting
 	    score is tf
 	    '''
         self.pipe.zadd(term, value, score)   
