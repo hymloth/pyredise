@@ -35,9 +35,6 @@ class IndexHandler(index_base.IndexBase):
     def __init__(self, **kwargs):
         index_base.IndexBase.__init__(self, **kwargs)
         
-    
-    def update_cardinality(self, value = 1):
-        self.pipe.incr( self._cardinality_key ,value )
 
         
     def term_add_doc_id(self, term, value, score):
@@ -75,25 +72,31 @@ class IndexHandler(index_base.IndexBase):
         self.pipe.srem("T%s"%term, doc_id)  
 
 
-    def add_doc_id(self, doc_id):
-        self.pipe.sadd(self._set_key, doc_id)   
+    def add_doc_id(self, internal_doc_id, external_doc_id):
+        #print "adding", internal_doc_id
+        self.store_doc_id(internal_doc_id, external_doc_id, piped=True)
+        self.pipe.sadd(self._set_key, internal_doc_id)   
+        
         
         
     def remove_doc_id(self, doc_id):
+        self.purge_doc_id(doc_id, piped=True)
         self.pipe.srem(self._set_key, doc_id)    
 
 
     def doc_id_exists(self, doc_id):
-        return self.db.sismember(self._set_key, doc_id) 
+        internal_doc_id = self.resolve_external_id(doc_id)
+        #print "internal", internal_doc_id , " exists", self.db.sismember(self._set_key, internal_doc_id) 
+        return self.db.sismember(self._set_key, internal_doc_id) 
         
                 
     def get_term_df(self, term): 
-        try: return math.log(  float(self.db.get(self._cardinality_key)) / (float(self.db.zcard(term))) )
+        try: return math.log(  float(self.get_cardinality(piped=False)) / (float(self.db.zcard(term))) )
         except: return False
     
       
     def get_dfs(self, term_list):
-        self.pipe.get(self._cardinality_key)
+        self.get_cardinality(piped=True)
         for term in term_list:  
             self.pipe.zcard(term)
         

@@ -52,6 +52,7 @@ class CorpusHandler(index_handler.IndexHandler):
         self.sanitized_text = []
         self.doc_len = 0
         self.delimiter = "!"
+        self.internal_doc_id = ""
         
 
 
@@ -116,11 +117,13 @@ class CorpusHandler(index_handler.IndexHandler):
         
         self.clear()
         
+        
         if not self.doc_id_exists(doc_id):        
-            self.add_doc_id(doc_id)
-            self.content_indexer(content, doc_id, index=True)
-            self.title_indexer(title, doc_id, index=True)
-            self.update_cardinality()
+            self.internal_doc_id = self.get_next_id()
+            self.add_doc_id(self.internal_doc_id, doc_id)
+            self.content_indexer(content, self.internal_doc_id, index=True)
+            self.title_indexer(title, self.internal_doc_id, index=True)
+            #self.update_cardinality()
             self.flush() # at this point, the INDEX has been updated
             return True                
         else:
@@ -185,12 +188,16 @@ class CorpusHandler(index_handler.IndexHandler):
         content = doc["content"]
         
         self.clear()
+        
+
 
         if self.doc_id_exists(doc_id):  
-            self.remove_doc_id(doc_id)
-            self.content_indexer(content, doc_id , index=False) 
-            self.title_indexer(title, doc_id, index=False)
-            self.update_cardinality(value= -1) # adjust cardinality
+            self.internal_doc_id = self.resolve_external_id(doc_id)
+            self.remove_doc_id(self.internal_doc_id)
+            self.content_indexer(content, self.internal_doc_id , index=False) 
+            self.title_indexer(title, self.internal_doc_id, index=False)
+            #self.update_cardinality(value= -1) # adjust cardinality
+            #self.purge_doc_id(self.internal_doc_id, piped=True)
             self.flush() # at this point, the INDEX has been updated 
             return True
         else:
