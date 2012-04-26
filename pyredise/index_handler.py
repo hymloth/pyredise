@@ -104,6 +104,7 @@ class IndexHandler(index_base.IndexBase):
         # res[0] is cardinality and the rest are the dfs of every term   
         s = []
         cardinality = float(res[0])
+        print res
         for i, item in enumerate(res[1:]):
             if item not in [None,0] : s.append( (term_list[i], math.log( cardinality/float(item))  ) )
  
