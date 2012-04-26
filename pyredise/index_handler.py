@@ -36,7 +36,6 @@ class IndexHandler(index_base.IndexBase):
         index_base.IndexBase.__init__(self, **kwargs)
         
 
-        
     def term_add_doc_id(self, term, value, score):
         '''
 	    score is tf
@@ -73,10 +72,8 @@ class IndexHandler(index_base.IndexBase):
 
 
     def add_doc_id(self, internal_doc_id, external_doc_id):
-        #print "adding", internal_doc_id
         self.store_doc_id(internal_doc_id, external_doc_id, piped=True)
         self.pipe.sadd(self._set_key, internal_doc_id)   
-        
         
         
     def remove_doc_id(self, doc_id):
@@ -86,7 +83,6 @@ class IndexHandler(index_base.IndexBase):
 
     def doc_id_exists(self, doc_id):
         internal_doc_id = self.resolve_external_id(doc_id)
-        #print "internal", internal_doc_id , " exists", self.db.sismember(self._set_key, internal_doc_id) 
         return self.db.sismember(self._set_key, internal_doc_id) 
         
                 
@@ -110,7 +106,6 @@ class IndexHandler(index_base.IndexBase):
         return s    
 
     
-    
     def get_postings(self, term_list, docids_list):
         for term in term_list:  
             self.pipe.hmget("&%s"%term, docids_list)
@@ -118,7 +113,6 @@ class IndexHandler(index_base.IndexBase):
         return self.flush()
     
   
-    
     def get_title_hit(self, term_list, doc_ids_list):     
         _len = len(doc_ids_list)
         _sub_len = len(term_list)

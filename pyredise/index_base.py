@@ -29,9 +29,10 @@ class IndexBase(object):
     
     Attributes:
     
-       _cardinality_key : a special key of _dict_key denoting the total number of documents in our corpus
+       _max_id : a special key of _dict_key denoting the current maximum docID number
        _set_key : a special key holding our unique docIDs currently present in the corpus
        _docid_map : a special key holding a mapping between docIDs and physical numbers, starting from one
+       _slots : a special key denoting some available ids for use ( < _max_id )
        db : the name of redis database (server)
        pipe : redis pipeline object
        
@@ -103,7 +104,6 @@ class IndexBase(object):
         else:    
             self.db.hdel(self._docid_map, internal_doc_id)  
             self.db.hdel(self._docid_map, external_doc_id)  
-        #print "purging", internal_doc_id ,self.db.hget(self._docid_map, internal_doc_id)
         self.set_slot(internal_doc_id, piped=piped)    
 
 
@@ -121,6 +121,7 @@ class IndexBase(object):
             self.set_max_id(value=1,piped=False)
             try:return (int(res[0])+1)
             except: return 1    
+
 
     def resolve_external_id(self, doc_id):
         return self.db.hget(self._docid_map, doc_id) 
