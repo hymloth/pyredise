@@ -64,7 +64,7 @@ class IndexBase(object):
     
     def get_cardinality(self, piped=True):
         if piped: self.pipe.scard(self._set_key)
-        return self.db.scard(self._set_key)
+        else: return self.db.scard(self._set_key)
         
         
     def set_max_id(self, value=1, piped=True):
