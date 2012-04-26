@@ -96,6 +96,9 @@ class QueryHandler(index_handler.IndexHandler):
             weighted_terms = self.filter_query()   
             res = self.vector_retrieval(weighted_terms)
 
+        external_ids = self.resolve_external_ids([i[0] for i in res])
+        res = [(external_ids[i], res[i][1]) for i in xrange(len(res))]
+
         if self.res_cache_db:
             try:
                 self.res_cache_db.set(initial_query, self.serializer.dumps(res))
