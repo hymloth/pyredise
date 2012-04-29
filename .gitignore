@@ -8,4 +8,5 @@ build
 dist
 usr
 MANIFEST
+stringcheck.so
 

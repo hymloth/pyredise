@@ -149,9 +149,20 @@ class QueryHandler(index_handler.IndexHandler):
         if self.debug: print "In exec single query"
         if "title_only" in self.filters:
             return [(i,1) for i in self.db.smembers("T%s"%query.strip())]
-        else:    
+        elif "pure_tfidf" in self.filters:    
             return self.db.zrevrange(query.strip(), 0, self.limit - 1 , withscores=True)
-
+        else:
+            q = query.strip()
+            res = self.db.zrevrange(q, 0, self.limit - 1 , withscores=True)
+            dids = list([i[0] for i in res])
+            title_rank = self.get_title_hit([q], dids)
+            new_doc_ids = []
+            for i, stuff in enumerate(res):
+                new_doc_ids.append( (stuff[0], self.weighted_ranking(tfidf=stuff[1], title=title_rank[i])) )    
+                
+            if self.debug: print "RESULTS " ,   sorted(new_doc_ids, key=operator.itemgetter(1), reverse=True)
+            
+            return sorted(new_doc_ids, key=operator.itemgetter(1), reverse=True)
 
     def get_titles(self, term_list):
         docs = list(self.db.sinter(["T%s"%term for term in term_list]))
