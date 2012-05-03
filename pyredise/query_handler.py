@@ -95,17 +95,19 @@ class QueryHandler(index_handler.IndexHandler):
         else:                                           
             weighted_terms = self.filter_query()   
             res = self.vector_retrieval(weighted_terms)
-
-        external_ids = self.resolve_external_ids([i[0] for i in res])
-        res = [(external_ids[i], res[i][1]) for i in xrange(len(res))]
-
-        if self.res_cache_db:
-            try:
-                self.res_cache_db.set(initial_query, self.serializer.dumps(res))
-            except:
-                raise Exception, "CACHING SEARCH RESULT FAILED, UNREACHABLE DB"    
-
+            
+        if res:
+            external_ids = self.resolve_external_ids([i[0] for i in res])
+            res = [(external_ids[i], res[i][1]) for i in xrange(len(res))]
+    
+            if self.res_cache_db:
+                try:
+                    self.res_cache_db.set(initial_query, self.serializer.dumps(res))
+                except:
+                    raise Exception, "CACHING SEARCH RESULT FAILED, UNREACHABLE DB"    
+    
         return res
+        
 
 
 
@@ -163,6 +165,7 @@ class QueryHandler(index_handler.IndexHandler):
             if self.debug: print "RESULTS " ,   sorted(new_doc_ids, key=operator.itemgetter(1), reverse=True)
             
             return sorted(new_doc_ids, key=operator.itemgetter(1), reverse=True)
+        
 
     def get_titles(self, term_list):
         docs = list(self.db.sinter(["T%s"%term for term in term_list]))
