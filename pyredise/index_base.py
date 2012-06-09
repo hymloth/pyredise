@@ -25,7 +25,7 @@ __authors__ = [
 
 class IndexBase(object):
     '''
-    A base class representing a "connection" with a redis server ( db )
+    A base class representing a "connection" with a redis server ( db ), providing some extra primitive functions for docIds manipulation
     
     Attributes:
     
@@ -69,22 +69,22 @@ class IndexBase(object):
         
     def set_max_id(self, value=1, piped=True):
         if piped: self.pipe.incr( self._max_id , value)
-        self.db.incr( self._max_id , value)
+        else: self.db.incr( self._max_id , value)
         
         
     def get_max_id(self, piped=True):
         if piped: self.pipe.get(self._max_id)
-        return self.db.get(self._max_id)   
+        else: return self.db.get(self._max_id)   
     
     
     def set_slot(self, id, piped=True):
         if piped: self.pipe.sadd(self._slots, id)
-        self.db.sadd(self._slots, id)
+        else: self.db.sadd(self._slots, id)
         
     
     def get_slot(self, piped=True):
         if piped: self.pipe.spop(self._slots)
-        return self.db.spop(self._slots)     
+        else: return self.db.spop(self._slots)     
 
     
     def store_doc_id(self, internal_doc_id, external_doc_id, piped=True):
