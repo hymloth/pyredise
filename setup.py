@@ -3,7 +3,7 @@ str_check = Extension('pyredise.stringcheck', ['pyredise/fast_regex/stringcheck.
 
        
 setup (name = 'pyredise',
-       version = '0.13',
+       version = '0.14',
        packages=['pyredise'],
        description = 'Python Redis Search Engine',
        url = "http://github.com/hymloth/pyredise",
