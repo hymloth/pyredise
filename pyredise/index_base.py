@@ -21,6 +21,9 @@ __authors__ = [
   '"Christos Spiliopoulos" <santos.koniordos@gmail.com>',
 ]
 
+from functools import partial
+
+from language_detection import check_lang
 
 
 class IndexBase(object):
@@ -129,3 +132,29 @@ class IndexBase(object):
 
     def resolve_external_ids(self, doc_ids):
         return self.db.hmget(self._docid_map, doc_ids) 
+    
+    
+    def legal_token(self, s, exclude_list=[], max_len=3):
+        if len(s.decode("utf-8")) <= max_len:
+            return False
+        if any(i in s for i in '<>/\{}|\+=_)(*&^%$#@~1234567890`'):
+            return False
+        if s in exclude_list:
+            return False
+        return True
+    
+    
+    def identify_language(self, text):
+        self.lang = check_lang(text)
+        if self.debug: print "LANG", self.lang
+        if self.lang == "english":
+            import stringcheck # it is faster baby, a true example of unnecessary premature optimization
+            from nltk import PorterStemmer
+            self.legal_token = stringcheck.check
+            self.stem = PorterStemmer().stem_word
+        elif self.lang == "greek":
+            from stemmers.greek import stem, stopwords 
+            self.stem = stem
+            self.legal_token = partial(self.legal_token, exclude_list=stopwords)
+        else:
+            raise Exception, " Could not identify language "

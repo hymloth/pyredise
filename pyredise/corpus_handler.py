@@ -22,13 +22,13 @@ __authors__ = [
 ]
 
 
-import index_handler
-from nltk import PorterStemmer
-from collections import defaultdict
-import stringcheck # super fast, C extension, returns True for alphanumerics only and non stopwords
 
 import re
 import json
+from collections import defaultdict
+
+import index_handler
+
 
 
 
@@ -47,12 +47,12 @@ class CorpusHandler(index_handler.IndexHandler):
         index_handler.IndexHandler.__init__(self, **kwargs)
         
         self.debug = kwargs.get('debug', False)
-        self.stem = PorterStemmer().stem_word
         self.pos = defaultdict(list)
         self.sanitized_text = []
         self.doc_len = 0
         self.delimiter = "!"
         self.internal_doc_id = ""
+        
         
 
 
@@ -67,12 +67,14 @@ class CorpusHandler(index_handler.IndexHandler):
     def content_indexer(self, doc, doc_id,  index=True):
 
         for i, token in enumerate(re.sub(r"[.,:;!\-?\"']", " ", doc).split()):
+            
             lower = token.lower()
             try: # no encoding errors
-                if stringcheck.check(lower):
+                if self.legal_token(lower):
                     item = self.stem(lower)
-                    self.update_pos(item, i)
-                    self.sanitized_text.append(item)
+                    if item:
+                        self.update_pos(item, i)
+                        self.sanitized_text.append(item)
             except: 
                 if self.debug: print "Probable unicode error"  
                 
@@ -94,15 +96,15 @@ class CorpusHandler(index_handler.IndexHandler):
         for i, token in enumerate(re.sub(r"[.,:;\-!?\"']", " ", title).split()):
             lower = token.lower()
             try: # no encoding errors
-                if stringcheck.check(lower):
+                if self.legal_token(lower):
                     item = self.stem(lower)
-                    
-                    if index: 
-                        self.term_add_doc_id_title(item, doc_id)
-                        self.term_add_doc_id_title_posting(item, doc_id, i)
-                    else: 
-                        self.term_remove_doc_id_title(item, doc_id)
-                        self.term_remove_doc_id_title_posting(item, doc_id)
+                    if item:
+                        if index: 
+                            self.term_add_doc_id_title(item, doc_id)
+                            self.term_add_doc_id_title_posting(item, doc_id, i)
+                        else: 
+                            self.term_remove_doc_id_title(item, doc_id)
+                            self.term_remove_doc_id_title_posting(item, doc_id)
                     
             except: 
                 if self.debug: print "Probable unicode error"  
@@ -114,8 +116,10 @@ class CorpusHandler(index_handler.IndexHandler):
         doc_id = str(doc["id"])
         title = doc["title"]
         content = doc["content"]
+
         
         self.clear()
+        self.identify_language(content)
         
         
         if not self.doc_id_exists(doc_id):        
@@ -149,15 +153,20 @@ class CorpusHandler(index_handler.IndexHandler):
         if not len(self.sanitized_text):
             if doc is None: 
                 raise Exception, " No document given !! "
-
+            self.clear()
+            self.identify_language(doc)
             for i, token in enumerate(re.sub(r"[.,:;!\-?\"']", " ", doc).split()):
                 lower = token.lower()
                 try: 
-                    if stringcheck.check(lower):
+                    #print "shit", lower, self.legal_token(lower)
+                    if self.legal_token(lower):
                         item = self.stem(lower)
-                        self.update_pos(item, i)
-                        self.sanitized_text.append(item)
-                except: 
+                        if item:
+                            self.update_pos(item, i)
+                            self.sanitized_text.append(item)
+                except Exception as e: 
+                    #import traceback
+                    #print traceback.format_exc()
                     if self.debug: print "Probable unicode error"  
                                 
             self.doc_len = len(self.sanitized_text)    
@@ -188,7 +197,7 @@ class CorpusHandler(index_handler.IndexHandler):
         content = doc["content"]
         
         self.clear()
-        
+        self.identify_language(content)
 
 
         if self.doc_id_exists(doc_id):  
@@ -196,8 +205,6 @@ class CorpusHandler(index_handler.IndexHandler):
             self.remove_doc_id(self.internal_doc_id)
             self.content_indexer(content, self.internal_doc_id , index=False) 
             self.title_indexer(title, self.internal_doc_id, index=False)
-            #self.update_cardinality(value= -1) # adjust cardinality
-            #self.purge_doc_id(self.internal_doc_id, piped=True)
             self.flush() # at this point, the INDEX has been updated 
             return True
         else:

@@ -22,9 +22,10 @@ import index_handler
 import re
 import itertools
 import operator
+import math
 
-from nltk.stem.porter import PorterStemmer
-import stringcheck# super fast, C extension, returns True for alphanumerics only and non stopwords
+
+
 
 
 try:
@@ -35,8 +36,10 @@ except:
     serializer = json
 
 
+from lua_scripts import *
 
 
+import stringcheck  # super fast, C extension, returns True for alphanumerics only and non stopwords
 
 FILTERS = {
            "complete": re.compile("/complete"),
@@ -63,13 +66,18 @@ class QueryHandler(index_handler.IndexHandler):
         self.filters = set()
         self.known_filters = FILTERS
         self.debug = kwargs.get('debug',True)         
-        self.stemmer = PorterStemmer()
         self.res_cache_db = kwargs.get('res_cache_db',None)  
         self.res_cache_exp = kwargs.get('res_cache_exp',100)
         self.serializer = serializer
         self.tfidf_w = kwargs.get('tfidf_w',0.33)
         self.title_w = kwargs.get('title_w',0.33)
         self.posting_w = kwargs.get('posting_w',0.33)
+        
+        self.use_lua = kwargs.get('use_lua',False)
+        if self.use_lua:
+            self.exec_single_query_lua = self.db.register_script(exec_single_query_script)
+            self.exec_multi_query_lua = self.db.register_script(exec_multi_query_script)
+
 
 
     def clear(self):
@@ -77,12 +85,14 @@ class QueryHandler(index_handler.IndexHandler):
         self.query = ""         
  
         
-    def process_query(self, query):
+    def process_query(self, query, ids=[]):
         ''' entry point for query processing '''
         
         self.clear()
+        self.identify_language(query)
         initial_query = query
         self.query = query
+        
         if self.debug: print "INITIAL QUERY:", initial_query
         
         self.apply_filters()
@@ -92,14 +102,25 @@ class QueryHandler(index_handler.IndexHandler):
             res = self.exec_single_query(self.query)    
         elif "title_only" in self.filters:             
             res = self.get_titles(self.query.split())                
-        else:                                           
-            weighted_terms = self.filter_query()   
-            res = self.vector_retrieval(weighted_terms)
-            
-        if res:
-            external_ids = self.resolve_external_ids([i[0] for i in res])
-            res = [(external_ids[i], res[i][1]) for i in xrange(len(res))]
-    
+        else:     
+            if self.use_lua:
+                args = self.query.split()
+                args.append(self.limit)
+                if not len(ids): 
+                    return self.exec_multi_query_lua(args=args)
+                else:
+                    return self.exec_multi_query_lua(keys=ids, args=args)
+            else:                                              
+                weighted_terms = self.filter_query()  
+                if not len(ids): 
+                    res = self.vector_retrieval(weighted_terms)
+                else:
+                    res = self.limited_vector_retrieval(weighted_terms, ids)
+
+        if res:   
+            if not self.use_lua:
+                external_ids = self.resolve_external_ids([i[0] for i in res])
+                res = [(external_ids[i], res[i][1]) for i in xrange(len(res))]
             if self.res_cache_db:
                 try:
                     self.res_cache_db.set(initial_query, self.serializer.dumps(res))
@@ -127,8 +148,12 @@ class QueryHandler(index_handler.IndexHandler):
         for token in re.sub(r"[.,:;\-!?\"']", " ", self.query).split():
             try: 
                 lower = token.lower()
-                if stringcheck.check(lower):
-                    q += self.stemmer.stem_word(lower) + " "         
+                if self.legal_token(lower):
+                    item = self.stem(lower)
+                    if item:
+                        q += self.stem(lower) + " " 
+                #if stringcheck.check(lower):
+                #    q += self.stem(lower) + " "         
             except: 
                 if self.debug: print "Probable unicode error in stemming query"  
                 
@@ -149,22 +174,25 @@ class QueryHandler(index_handler.IndexHandler):
     def exec_single_query(self, query):
         ''' optimized for a single query '''
         if self.debug: print "In exec single query"
+        q = query.strip()
         if "title_only" in self.filters:
-            return [(i,1) for i in self.db.smembers("T%s"%query.strip())]
+            return [(i,1) for i in self.db.smembers("T%s"%q)]
         elif "pure_tfidf" in self.filters:    
-            return self.db.zrevrange(query.strip(), 0, self.limit - 1 , withscores=True)
+            return self.db.zrevrange(q, 0, self.limit - 1 , withscores=True)
         else:
-            q = query.strip()
-            res = self.db.zrevrange(q, 0, self.limit - 1 , withscores=True)
-            dids = list([i[0] for i in res])
-            title_rank = self.get_title_hit([q], dids)
-            new_doc_ids = []
-            for i, stuff in enumerate(res):
-                new_doc_ids.append( (stuff[0], self.weighted_ranking(tfidf=stuff[1], title=title_rank[i])) )    
+            if self.use_lua:
+                return self.exec_single_query_lua(args=[q,self.limit])
+            else:
+                res = self.db.zrevrange(q, 0, self.limit - 1 , withscores=True)
+                dids = list([i[0] for i in res])
+                title_rank = self.get_title_hit([q], dids)
+                new_doc_ids = []
+                for i, stuff in enumerate(res):
+                    new_doc_ids.append( (stuff[0], self.weighted_ranking(tfidf=stuff[1], title=title_rank[i])) )    
+                    
+                if self.debug: print "RESULTS " ,   sorted(new_doc_ids, key=operator.itemgetter(1), reverse=True)
                 
-            if self.debug: print "RESULTS " ,   sorted(new_doc_ids, key=operator.itemgetter(1), reverse=True)
-            
-            return sorted(new_doc_ids, key=operator.itemgetter(1), reverse=True)
+                return sorted(new_doc_ids, key=operator.itemgetter(1), reverse=True)
         
 
     def get_titles(self, term_list):
@@ -202,10 +230,42 @@ class QueryHandler(index_handler.IndexHandler):
         doc_ids = self.flush()[1]
         if not len(doc_ids):
             return None
-        
         return self.rank_results(doc_ids, terms) 
 
 
+            
+    def limited_vector_retrieval(self, weighted_terms, ids):
+        ''' 
+        Performs only on specific ids
+        '''
+
+        if self.debug: print "performing limited vector retrieval on " , weighted_terms
+        terms = [i[0] for i in weighted_terms]
+        
+
+        internal_ids = [i for i in self.resolve_external_ids(ids) if i]
+        _len = len(internal_ids)
+        _tlen = len(terms)
+
+        self.get_cardinality(piped=True)
+        for id in internal_ids:
+            for term in terms:
+                self.pipe.zscore(term, id)
+                
+        res = self.flush()
+        
+        cardinality = res[0]
+        r = res[1:]
+        doc_ids = []
+
+        for i, id in enumerate(internal_ids):
+            t = 0.0
+            for tf in r[i*_tlen:(i*_tlen + _tlen)]:
+                t += tf * float(weighted_terms[i%_tlen][1])
+            doc_ids.append((id, t))
+            
+        print doc_ids
+        return self.rank_results(doc_ids, terms) 
             
         
 
@@ -226,10 +286,11 @@ class QueryHandler(index_handler.IndexHandler):
             # get the posting lists
             sh = self.get_postings(terms, dids) # actually, I wanted to name this "shit"
 
+
             posting_rank = []
 
             for v in itertools.izip_longest(*sh):      # decompose list of lists  
-
+                
                 try: posting_rank.append( ( self.proximity_rank( self.unfold_postings([ [int(k) for k in j.split(",")] for j in v]) ) ) )
                 except: pass
                 
@@ -293,25 +354,26 @@ class QueryHandler(index_handler.IndexHandler):
                 
         
         score = 0
-       
+
         while True: 
             
             try:
                 # get all heads
                 _tuple = [i.pop(0) for i in list_of_lists]
-            
                 for i in xrange(1,len(_tuple)):
                     # ensure we keep order of postings
                     while _tuple[i] - _tuple[i-1] < 0:
                         _tuple.pop(i)
                         _tuple.insert(i, list_of_lists[i].pop(0))
+
+                        
                 
                 score_vector =  [i - _len for i in map(sub, _tuple)]       
                 #print _tuple  , score_vector[-1] - score_vector[0] - _len + 1
                 score += 1.0/(score_vector[-1] - score_vector[0] - _len + 1) # ensure no division with 0
 
             except: break
-        
+            
         return score
 
 

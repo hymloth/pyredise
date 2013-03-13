@@ -97,7 +97,8 @@ class IndexHandler(index_base.IndexBase):
             self.pipe.zcard(term)
         
         res = self.flush()
-        # res[0] is cardinality and the rest are the dfs of every term   
+        # res[0] is cardinality and the rest are the dfs of every term 
+        print "lele", res, term_list 
         s = []
         cardinality = float(res[0])
         for i, item in enumerate(res[1:]):
