@@ -60,7 +60,8 @@ def check_lang(text, max_len=2000):
     
     cnt = defaultdict(int)
     t = strip_tags(text[:max_len])
-    t = t.decode("utf-8","replace")
+    if type(t) is str:
+        t = t.decode("utf-8","replace")
 
     
     for lang, letters in langs.iteritems():
