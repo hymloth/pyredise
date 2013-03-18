@@ -253,7 +253,7 @@ class QueryHandler(index_handler.IndexHandler):
                 self.pipe.zscore(term, id)
                 
         res = self.flush()
-        
+        print res
         cardinality = res[0]
         r = res[1:]
         doc_ids = []
@@ -261,10 +261,13 @@ class QueryHandler(index_handler.IndexHandler):
         for i, id in enumerate(internal_ids):
             t = 0.0
             for tf in r[i*_tlen:(i*_tlen + _tlen)]:
+                if tf is None:
+                    continue
                 t += tf * float(weighted_terms[i%_tlen][1])
-            doc_ids.append((id, t))
-            
-        print doc_ids
+            if t > 0.0:
+                doc_ids.append((id, t))
+
+
         return self.rank_results(doc_ids, terms) 
             
         
@@ -292,12 +295,11 @@ class QueryHandler(index_handler.IndexHandler):
             for v in itertools.izip_longest(*sh):      # decompose list of lists  
                 
                 try: posting_rank.append( ( self.proximity_rank( self.unfold_postings([ [int(k) for k in j.split(",")] for j in v]) ) ) )
-                except: pass
+                except: posting_rank.append(0)
                 
             new_doc_ids = []
             
             for i, stuff in enumerate(doc_ids):
-
                 new_doc_ids.append( (stuff[0], self.weighted_ranking(tfidf=stuff[1], title=title_rank[i], posting=posting_rank[i] )) )    
                 
             if self.debug: print "RESULTS " ,   sorted(new_doc_ids, key=operator.itemgetter(1), reverse=True)
