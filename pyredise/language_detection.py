@@ -34,11 +34,17 @@ import re
 # if the sum of the num of letters in some text are greater than 1>2 of the text's length, we declare it to be of this language
 
 langs = { "english" : set(["a", "b", "c", "d" , "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x","y", "z"]),
-          "greek" : set([i.decode("utf-8") for i in ["α", "β", "γ", "δ", "ε", "ζ", "η", "θ", "ι", "κ", "λ", "μ", "ν", "ξ", "ο", "π", "ρ", "σ", "τ", "υ", "φ" ,"χ", "ψ" ,"ω"]])
+          "greek" : set([i.decode("utf-8") for i in ["α", "β", "γ", "δ", "ε", "ζ", "η", "θ", "ι", "κ", "λ", "μ", "ν", "ξ", "ο", "π", "ρ", "σ", "τ", "υ", "φ" ,"χ", "ψ" ,"ω"]]),
+          "russian" : set(["А", "Б", "В", "Г", "Д", "Е", "Ё", "Ж", "З", "И", "Й", "К", "Л", "М", "Н", "О", "П", "Р", "С", "Т", "У", "Ф", "Х", "Ц", "Ч", "Ш", "Щ", "Ъ", "Ы", "Ь", "Э", "Ю", "Я"]),
          }
 
 
+from lang import LangDetect
+
+
 from HTMLParser import HTMLParser
+
+
 
 class MLStripper(HTMLParser):
     def __init__(self):
@@ -48,6 +54,8 @@ class MLStripper(HTMLParser):
         self.fed.append(d)
     def get_data(self):
         return ''.join(self.fed)
+    
+    
 
 def strip_tags(html):
     s = MLStripper()
@@ -56,7 +64,7 @@ def strip_tags(html):
 
 
 
-def check_lang(text, max_len=2000):
+def _check_lang(text, max_len=2000):
     
     cnt = defaultdict(int)
     t = strip_tags(text[:max_len])
@@ -75,4 +83,37 @@ def check_lang(text, max_len=2000):
     
     for key, v in sorted(cnt.iteritems(), key=itemgetter(1), reverse=True):
         return key
+    
+    
+    
+    
+def check_lang(text, max_len=2000):
+    t = strip_tags(text[:max_len])
+    ld = LangDetect()
+    lang = ld.detect(text)
+    if not lang:
+        lang = _check_lang(text)
+        
+    return lang
+    
+    
+    
+    
+if __name__=="__main__":
+    import time
+    
+    texts = [
+     "θα πας και θα ",
+     "De snelle bruine vos springt over de luie hond",
+     "The quick brown fox jumps over the lazy dog",
+     "Le renard brun rapide saute par-dessus le chien paresseux",
+     "Der schnelle braune Fuchs springt über den faulen Hund",
+     "El rápido zorro marrón salta sobre el perro perezoso",
+     "Журнал содержит более полусотни аналитических, тематических и новостных разделов"
+     ]
 
+
+    
+    for text in texts:
+        t = time.time()
+        print text, "=>", check_lang(text), time.time() - t

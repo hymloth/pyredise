@@ -147,7 +147,7 @@ class CorpusHandler(index_handler.IndexHandler):
         features_limit = kwargs.get('features_limit', 500)
         rnd = kwargs.get('rnd', 4)
         doc = kwargs.get('doc', None)
-        
+
         # just in case, we chech if we have to re-tokenize the doc
 
         if not len(self.sanitized_text):
@@ -155,10 +155,10 @@ class CorpusHandler(index_handler.IndexHandler):
                 raise Exception, " No document given !! "
             self.clear()
             self.identify_language(doc)
+
             for i, token in enumerate(re.sub(r"[.,:;!\-?\"']", " ", doc).split()):
                 lower = token.lower()
                 try: 
-                    #print "shit", lower, self.legal_token(lower)
                     if self.legal_token(lower):
                         item = self.stem(lower)
                         if item:
@@ -222,5 +222,45 @@ class CorpusHandler(index_handler.IndexHandler):
 
 
 
+if __name__=="__main__":
     
+    import redis , time, json
+    db = redis.Redis(host='192.168.1.3', port=6666, db=3)
+
     
+    cp = CorpusHandler(debug=True, db=db)
+    
+    articles = [
+     {"content": "Να σε πώ και κάτι φιλαράκι, δεν σε λέω και τίποτα κιόλας", "title":"δεν σε λέω", "id": 1 },
+     {"content": "De snelle bruine vos springt over de luie hond", "title":"luie hond", "id": 2 },
+     {"content": "The quick brown fox jumps over the lazy dog", "title":"lazy dog", "id": 3 },
+     {"content": "Le renard brun rapide saute par-dessus le chien paresseux", "title":"chien paresseux", "id": 4 },
+     {"content": "Der schnelle braune Fuchs springt über den faulen Hund", "title":"faulen Hund", "id": 5 },
+     {"content": "El rápido zorro marrón salta sobre el perro perezoso", "title":"perro perezoso", "id": 6 },
+     {"content": "Журнал содержит более полусотни аналитических, тематических и новостных разделов, а также детальный архив и базу данных переписей населения, демографических показателей по регионам России", "title":"Демоскоп", "id": 457 }
+     ]
+
+    start = time.time()
+    for n, i in enumerate(articles):
+        print n,
+        if not   cp.index(i):
+            print "features:", cp.extract_features(doc = i["content"])
+
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -135,8 +135,8 @@ class IndexBase(object):
     
     
     def legal_token(self, s, exclude_list=[], max_len=3):
-        if len(s.decode("utf-8")) <= max_len:
-            return False
+        #if len(s.decode("utf-8")) <= max_len:
+        #    return False
         if any(i in s for i in '<>/\{}|\+=_)(*&^%$#@~1234567890`'):
             return False
         if s in exclude_list:
@@ -147,14 +147,22 @@ class IndexBase(object):
     def identify_language(self, text):
         self.lang = check_lang(text)
         if self.debug: print "LANG", self.lang
-        if self.lang == "english":
-            import stringcheck # it is faster baby, a true example of unnecessary premature optimization
-            from nltk import PorterStemmer
-            self.legal_token = stringcheck.check
-            self.stem = PorterStemmer().stem_word
-        elif self.lang == "greek":
+        if self.lang == "greek":
             from stemmers.greek import stem, stopwords 
             self.stem = stem
             self.legal_token = partial(self.legal_token, exclude_list=stopwords)
         else:
-            raise Exception, " Could not identify language "
+            from nltk.stem import SnowballStemmer
+            from nltk.corpus import stopwords
+            self.stem = SnowballStemmer(self.lang).stem
+            self.legal_token = partial(self.legal_token, exclude_list=stopwords.words(self.lang))
+            
+        '''if self.lang == "english":
+            import stringcheck # it is faster baby, a true example of unnecessary premature optimization
+            from nltk import PorterStemmer
+            self.legal_token = stringcheck.check
+            self.stem = PorterStemmer().stem_word
+        else:
+            raise Exception, " Could not identify language "'''
+            
+            
