@@ -118,8 +118,8 @@ if __name__=="__main__":
      "Le renard brun rapide saute par-dessus le chien paresseux",
      "Der schnelle braune Fuchs springt über den faulen Hund",
      "El rápido zorro marrón salta sobre el perro perezoso",
-     "организовывал забастовки и демонстрации, поднимал рабочих на бакинских предприятия"
-     ]
+     "организовывал забастовки и демонстрации, поднимал рабочих на бакинских предприятия",
+   ]
 
     ld = LangDetect()
     

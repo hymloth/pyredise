@@ -90,9 +90,9 @@ def _check_lang(text, max_len=2000):
 def check_lang(text, max_len=2000):
     t = strip_tags(text[:max_len])
     ld = LangDetect()
-    lang = ld.detect(text)
+    lang = ld.detect(t)
     if not lang:
-        lang = _check_lang(text)
+        lang = _check_lang(t)
         
     return lang
     
