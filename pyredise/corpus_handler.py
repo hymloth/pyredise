@@ -159,7 +159,7 @@ class CorpusHandler(index_handler.IndexHandler):
                 lower = token.lower()
                 try: 
                     if self.legal_token(lower):
-                        item = self.stem(lower)
+                        item = self.stem(lower.decode("utf8", "ignore"))
                         if item:
                             self.update_pos(item, i)
                             self.sanitized_text.append(item)
@@ -174,7 +174,7 @@ class CorpusHandler(index_handler.IndexHandler):
 
         tfidf_tuple_list = []
         adapt_features = []
-        
+
         for i in xrange(min(self.doc_len, len(idfs), features_limit)):
             tfidf = len(self.pos[self.sanitized_text[i]]) * idfs[i] / self.doc_len
             tup = (self.sanitized_text[i], str(round(tfidf , rnd)), i)
