@@ -77,8 +77,8 @@ def detect_language(words):
 
 def check_lang(text, max_len=2000):
     t = strip_tags(text[:max_len])
-    words = [i.encode("utf-8","ignore") for i in t.split()]
-    #words = t.split()
+    #words = [i.encode("utf-8","ignore") for i in t.split()]
+    words = t.split()
     return detect_language(words)
 
 
