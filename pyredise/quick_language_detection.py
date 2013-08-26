@@ -75,11 +75,44 @@ def detect_language(words):
     return most_rated_language
 
 
+langs = { "english" : set(["a", "b", "c", "d" , "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x","y", "z"]),
+          "greek" : set([i.decode("utf-8") for i in ["α", "β", "γ", "δ", "ε", "ζ", "η", "θ", "ι", "κ", "λ", "μ", "ν", "ξ", "ο", "π", "ρ", "σ", "τ", "υ", "φ" ,"χ", "ψ" ,"ω"]]),
+          "russian" : set(["А", "Б", "В", "Г", "Д", "Е", "Ё", "Ж", "З", "И", "Й", "К", "Л", "М", "Н", "О", "П", "Р", "С", "Т", "У", "Ф", "Х", "Ц", "Ч", "Ш", "Щ", "Ъ", "Ы", "Ь", "Э", "Ю", "Я"]),
+         }
+from operator import itemgetter
+from collections import defaultdict
+def _check_lang(text, max_len=2000):
+    
+    cnt = defaultdict(int)
+    t = strip_tags(text[:max_len])
+    if type(t) is str:
+        t = t.decode("utf-8","replace")
+
+    
+    for lang, letters in langs.iteritems():
+        for i in t:
+            if i != " " and i in letters:
+                cnt[lang] += 1
+                
+            if cnt[lang] > len(text) / 2:
+                return lang
+            
+    
+    for key, v in sorted(cnt.iteritems(), key=itemgetter(1), reverse=True):
+        return key
+
+
 def check_lang(text, max_len=2000):
     t = strip_tags(text[:max_len])
-    words = [i.encode("utf-8","ignore") for i in t.split()]
-    #words = t.split()
-    return detect_language(words)
+    lang = _check_lang(t)
+
+    if lang == "english":
+        words = [i.encode("utf-8","ignore") for i in t.split()]
+        lang = detect_language(words)
+        
+    return lang
+
+
 
 
 if __name__=='__main__':
