@@ -46,8 +46,6 @@ def _calculate_languages_ratios(words):
     # Compute per language included in nltk number of unique stopwords appearing in analyzed text
     for language in stopwords.fileids():
         stopwords_set = set(stopwords.words(language))
-        if language == "greek":
-            print language, stopwords_set
         words_set = set(words)
         common_elements = words_set.intersection(stopwords_set)
 
