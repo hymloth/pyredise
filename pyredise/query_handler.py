@@ -27,7 +27,6 @@ import math
 
 
 
-
 try:
     import msgpack
     serializer = msgpack
@@ -77,6 +76,7 @@ class QueryHandler(index_handler.IndexHandler):
         if self.use_lua:
             self.exec_single_query_lua = self.db.register_script(exec_single_query_script)
             self.exec_multi_query_lua = self.db.register_script(exec_multi_query_script)
+            
 
 
 
@@ -149,13 +149,13 @@ class QueryHandler(index_handler.IndexHandler):
             try: 
                 lower = token.lower()
                 if self.legal_token(lower):
-                    item = self.stem(lower)
+                    item = self.stem(lower.decode("utf8", "ignore"))
                     if item:
-                        q += self.stem(lower) + " " 
+                        q += item + " " 
                 #if stringcheck.check(lower):
                 #    q += self.stem(lower) + " "         
             except: 
-                if self.debug: print "Probable unicode error in stemming query"  
+                if self.debug: print "Probable unicode error in stemming query"  , q
                 
         self.query = q    
         if self.debug: print "STEMMED QUERY:", self.query

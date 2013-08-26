@@ -16,7 +16,8 @@ l_map = {"en": "english",
          "fr": "french",
          "es": "spanish",
          "nl": "dutch",
-         "ru": "russian"
+         "ru": "russian",
+         "it": "italian",
          }
 
 
@@ -54,7 +55,7 @@ class LangDetect(object):
     language_trigrams = {}
     langid            = LazyCorpusLoader('langid', LangIdCorpusReader, r'(?!\.).*\.txt')
 
-    def __init__(self, languages=['nl', 'en', 'fr', 'de', 'es']):
+    def __init__(self, languages=['nl', 'en', 'fr', 'de', 'es', "it"]):
         for lang in languages:
             self.language_trigrams[lang] = FreqDist()
             for f in self.langid.freqs(fileids=lang+"-3grams.txt"):
@@ -87,7 +88,7 @@ class LangDetect(object):
         s = 0.0
         for score in scores.itervalues():
             s += score
-        
+
         if s == 0.0:
             return None
 
@@ -112,13 +113,14 @@ if __name__=="__main__":
     import time
     
     texts = [
-             "θα πας και θα γαμηθεις μωρη γαμημενη",
      "De snelle bruine vos springt over de luie hond",
      "The quick brown fox jumps over the lazy dog",
      "Le renard brun rapide saute par-dessus le chien paresseux",
      "Der schnelle braune Fuchs springt über den faulen Hund",
      "El rápido zorro marrón salta sobre el perro perezoso",
      "организовывал забастовки и демонстрации, поднимал рабочих на бакинских предприятия",
+     "dette er hvad jeg kalder den store design af en perfekt lort",
+     "di nuovo",
    ]
 
     ld = LangDetect()

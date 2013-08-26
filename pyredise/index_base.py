@@ -23,7 +23,6 @@ __authors__ = [
 
 from functools import partial
 
-from language_detection import check_lang
 
 
 class IndexBase(object):
@@ -144,9 +143,18 @@ class IndexBase(object):
         return True
     
     
+
+        
     def identify_language(self, text):
+        
+        # we need different language detection on indexing vs quering (for speed)
+        if self.__class__.__name__ == "QueryHandler":
+            from sensitive_language_detection import check_lang
+        else:
+            from quick_language_detection import check_lang
+        
         self.lang = check_lang(text)
-        if self.debug: print "LANG", self.lang
+        
         if self.lang == "greek":
             from stemmers.greek import stem, stopwords 
             self.stem = stem
@@ -157,12 +165,6 @@ class IndexBase(object):
             self.stem = SnowballStemmer(self.lang).stem
             self.legal_token = partial(self.legal_token, exclude_list=stopwords.words(self.lang))
             
-        '''if self.lang == "english":
-            import stringcheck # it is faster baby, a true example of unnecessary premature optimization
-            from nltk import PorterStemmer
-            self.legal_token = stringcheck.check
-            self.stem = PorterStemmer().stem_word
-        else:
-            raise Exception, " Could not identify language "'''
-            
+
+        if self.debug: print "LANG", self.lang#, "stemmer", self.stem
             

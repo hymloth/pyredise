@@ -31,7 +31,6 @@ import index_handler
 
 
 
-
 class CorpusHandler(index_handler.IndexHandler):
     '''    
     A class for dynamic manipulation of our corpus.
@@ -71,12 +70,12 @@ class CorpusHandler(index_handler.IndexHandler):
             lower = token.lower()
             try: # no encoding errors
                 if self.legal_token(lower):
-                    item = self.stem(lower)
+                    item = self.stem(lower.decode("utf8", "ignore"))
                     if item:
                         self.update_pos(item, i)
                         self.sanitized_text.append(item)
             except: 
-                if self.debug: print "Probable unicode error"  
+                if self.debug: print "Probable unicode error"  , lower
                 
         self.doc_len = len(self.sanitized_text)  
         
@@ -97,7 +96,7 @@ class CorpusHandler(index_handler.IndexHandler):
             lower = token.lower()
             try: # no encoding errors
                 if self.legal_token(lower):
-                    item = self.stem(lower)
+                    item = self.stem(lower.decode("utf8", "ignore"))
                     if item:
                         if index: 
                             self.term_add_doc_id_title(item, doc_id)
@@ -117,7 +116,7 @@ class CorpusHandler(index_handler.IndexHandler):
         title = doc["title"]
         content = doc["content"]
 
-        
+
         self.clear()
         self.identify_language(content)
         
@@ -229,8 +228,8 @@ if __name__=="__main__":
 
     
     cp = CorpusHandler(debug=True, db=db)
-    
-    articles = [
+    #cp.drop()
+    '''articles = [
      {"content": "Να σε πώ και κάτι φιλαράκι, δεν σε λέω και τίποτα κιόλας", "title":"δεν σε λέω", "id": 1 },
      {"content": "De snelle bruine vos springt over de luie hond", "title":"luie hond", "id": 2 },
      {"content": "The quick brown fox jumps over the lazy dog", "title":"lazy dog", "id": 3 },
@@ -244,8 +243,19 @@ if __name__=="__main__":
     for n, i in enumerate(articles):
         print n,
         if not   cp.index(i):
-            print "features:", cp.extract_features(doc = i["content"])
+            print "features:", cp.extract_features(doc = i["content"])'''
+    
+    
+    '''import feedparser
+    
+    s = feedparser.parse("http://www.koutipandoras.gr/feed")
+    
+    for i, e in enumerate(s["entries"]):
 
+        cp = CorpusHandler(debug=True, db=db)
+        a = {"title":e["title"], "content":e["content"][0]["value"], "id":i+6}
+        print cp.index(a)
+        print cp.sanitized_text'''
             
 
 
