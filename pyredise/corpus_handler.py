@@ -118,7 +118,7 @@ class CorpusHandler(index_handler.IndexHandler):
 
 
         self.clear()
-        self.identify_language(content)
+        self.identify_language(title + " " + content)
         
         
         if not self.doc_id_exists(doc_id):        
@@ -196,7 +196,7 @@ class CorpusHandler(index_handler.IndexHandler):
         content = doc["content"]
         
         self.clear()
-        self.identify_language(content)
+        self.identify_language(title + " " + content)
 
 
         if self.doc_id_exists(doc_id):  
