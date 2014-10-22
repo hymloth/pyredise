@@ -107,7 +107,7 @@ def check_lang(text, max_len=2000):
     lang = _check_lang(t)
 
     if lang == "english":
-        words = [i.encode("utf-8","ignore") for i in t.split()]
+        words = [i for i in t.split()]
         lang = detect_language(words)
         
     return lang

@@ -148,7 +148,7 @@ class CorpusHandler(index_handler.IndexHandler):
         doc = kwargs.get('doc', None)
 
         # just in case, we chech if we have to re-tokenize the doc
-
+        print  33, len(self.sanitized_text)
         if not len(self.sanitized_text):
             if doc is None: 
                 raise Exception, " No document given !! "
@@ -256,10 +256,21 @@ if __name__=="__main__":
         a = {"title":e["title"], "content":e["content"][0]["value"], "id":i+6}
         print cp.index(a)
         print cp.sanitized_text'''
+
+
+
+
+
+    i = {"title" : "A scientific document about synthesizing spider traps with post nuclear plutonium",
+        "abstract" : "In the recent years many a spider has developed bong types of extraordinary randomness. \
+                So it is urgent for us to drink them and go to deeper states of realization",
+                "content": "The procedure was funded by Matthew's Hearts of Hope, a Connecticut-based nonprofit foundation raising awareness for congenital heart defects. This is a game changer for CHD babies with complicated heart anatomy, foundation founder Marie Hatcher tells The Independent. Normally the first time the surgeon sees the heart is when the chest is open, now they have the ability to plan out the surgery ahead of time while looking at a 3D heart of the baby or child's heart"}
             
 
 
-
+    print "title features:", cp.extract_features(doc = i["title"])
+    print "abstract features:", cp.extract_features(doc = i["abstract"])
+    print "content features:", cp.extract_features(doc = i["content"])
 
 
 
