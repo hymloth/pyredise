@@ -148,7 +148,6 @@ class CorpusHandler(index_handler.IndexHandler):
         doc = kwargs.get('doc', None)
 
         # just in case, we chech if we have to re-tokenize the doc
-        print  33, len(self.sanitized_text)
         if not len(self.sanitized_text):
             if doc is None: 
                 raise Exception, " No document given !! "
@@ -229,7 +228,7 @@ if __name__=="__main__":
     
     cp = CorpusHandler(debug=True, db=db)
     #cp.drop()
-    '''articles = [
+    articles = [
      {"content": "Να σε πώ και κάτι φιλαράκι, δεν σε λέω και τίποτα κιόλας", "title":"δεν σε λέω", "id": 1 },
      {"content": "De snelle bruine vos springt over de luie hond", "title":"luie hond", "id": 2 },
      {"content": "The quick brown fox jumps over the lazy dog", "title":"lazy dog", "id": 3 },
@@ -243,7 +242,7 @@ if __name__=="__main__":
     for n, i in enumerate(articles):
         print n,
         if not   cp.index(i):
-            print "features:", cp.extract_features(doc = i["content"])'''
+            print "features:", cp.extract_features(doc = i["content"])
     
     
     '''import feedparser

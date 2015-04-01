@@ -25,7 +25,8 @@ import langid
 from functools import partial
 
 
-lang_mapping = {"gr": "greek", "en":"english", "tr":"turkish", "pl":"polish", "sv":"swedish", "es":"spanish", "pt":"portuguese",
+
+lang_mapping = {"el": "greek", "en":"english", "tr":"turkish", "pl":"polish", "sv":"swedish", "es":"spanish", "pt":"portuguese",
 "it":"italian", "hu":"hungarian", "de":"german", "fr":"french", "fi":"finnish", "nl":"dutch", "ru":"russian", "da":"danish",
 "no": "norwegian"  }
 
