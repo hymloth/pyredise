@@ -45,7 +45,7 @@ def _calculate_languages_ratios(words):
 
     # Compute per language included in nltk number of unique stopwords appearing in analyzed text
     for language in stopwords.fileids():
-        stopwords_set = set(stopwords.words(language))
+        stopwords_set = set([i.encode("utf-8") for i in stopwords.words(language)])
         words_set = set(words)
         common_elements = words_set.intersection(stopwords_set)
 
@@ -75,10 +75,16 @@ def detect_language(words):
     return most_rated_language
 
 
+
 langs = { "english" : set(["a", "b", "c", "d" , "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x","y", "z"]),
           "greek" : set([i.decode("utf-8") for i in ["α", "β", "γ", "δ", "ε", "ζ", "η", "θ", "ι", "κ", "λ", "μ", "ν", "ξ", "ο", "π", "ρ", "σ", "τ", "υ", "φ" ,"χ", "ψ" ,"ω"]]),
           "russian" : set(["А", "Б", "В", "Г", "Д", "Е", "Ё", "Ж", "З", "И", "Й", "К", "Л", "М", "Н", "О", "П", "Р", "С", "Т", "У", "Ф", "Х", "Ц", "Ч", "Ш", "Щ", "Ъ", "Ы", "Ь", "Э", "Ю", "Я"]),
+          "polish" : set([i.decode("utf-8") for i in [  "a",  "ą",  "b",  "c",  "ć",  "d",  "e",  "ę",  "f",  "g",  "h",  "I",  "j",  "k",  "l",  "ł",  "m",  "n",  "ń",  "o",  "ó",  "p",  "r",  "s",  'ś',  "t",  "u",  "w",  "y",  
+"z",  "ź",  "ż"]]),
          }
+
+
+
 from operator import itemgetter
 from collections import defaultdict
 def _check_lang(text, max_len=2000):
@@ -106,7 +112,7 @@ def check_lang(text, max_len=2000):
     t = strip_tags(text[:max_len])
     lang = _check_lang(t)
 
-    if lang == "english":
+    if lang in ["english", "polish"]:
         words = [i for i in t.split()]
         lang = detect_language(words)
         
@@ -136,7 +142,8 @@ if __name__=='__main__':
      "El rápido zorro marrón salta sobre el perro perezoso y folla el infierno fuera de él",
      "En snabb brun räv hoppar över den lata hunden och knullar skiten ur det",
      "Hızlı kahverengi tilki tembel köpeğin üstünden atlar ve bunun cehenneme sikikleri",
-     "Η γρήγορη καφέ αλεπού πηδάει πάνω από το μεσημέρι και πηδάει την κόλαση έξω από αυτό"
+     "Η γρήγορη καφέ αλεπού πηδάει πάνω από το μεσημέρι και τρέχει έξω από αυτό",
+     "Idź prosto i skręć w lewo/prawo Poczekaj chwilę Chodź ze mną Szukam John’a już"
      ]
 
 

@@ -1,2 +1,4 @@
+langid==1.1.4.dev0
 nltk==3.0.2
+numpy==1.9.2
 redis==2.10.3

@@ -21,7 +21,13 @@ __authors__ = [
   '"Christos Spiliopoulos" <santos.koniordos@gmail.com>',
 ]
 
+import langid
 from functools import partial
+
+
+lang_mapping = {"gr": "greek", "en":"english", "tr":"turkish", "pl":"polish", "sv":"swedish", "es":"spanish", "pt":"portuguese",
+"it":"italian", "hu":"hungarian", "de":"german", "fr":"french", "fi":"finnish", "nl":"dutch", "ru":"russian", "da":"danish",
+"no": "norwegian"  }
 
 
 
@@ -142,18 +148,10 @@ class IndexBase(object):
             return False
         return True
     
-    
-
         
     def identify_language(self, text):
         
-        # we need different language detection on indexing vs quering (for speed)
-        if self.__class__.__name__ == "QueryHandler":
-            from sensitive_language_detection import check_lang
-        else:
-            from quick_language_detection import check_lang
-        
-        self.lang = check_lang(text)
+        self.lang = lang_mapping[langid.classify(text)[0]]
         
         if self.lang == "greek":
             from stemmers.greek import stem, stopwords 

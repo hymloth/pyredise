@@ -29,7 +29,7 @@ if __name__=="__main__":
 
 
     import redis , time, json
-    db = redis.Redis(host='192.168.1.2', port=6666, db=3)
+    db = redis.Redis(host='192.168.1.6', port=6666, db=3)
     from noocore.models.mongo_models import Article, Magazine    
     from mongoengine import connect
    

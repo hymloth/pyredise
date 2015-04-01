@@ -38,8 +38,6 @@ except:
 from lua_scripts import *
 
 
-import stringcheck  # super fast, C extension, returns True for alphanumerics only and non stopwords
-
 FILTERS = {
            "complete": re.compile("/complete"),
            "pure_tfidf" : re.compile("/pure_tfidf"),
@@ -151,9 +149,7 @@ class QueryHandler(index_handler.IndexHandler):
                 if self.legal_token(lower):
                     item = self.stem(lower.decode("utf8", "ignore"))
                     if item:
-                        q += item + " " 
-                #if stringcheck.check(lower):
-                #    q += self.stem(lower) + " "         
+                        q += item + " "      
             except: 
                 if self.debug: print "Probable unicode error in stemming query"  , q
                 
