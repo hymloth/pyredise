@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
-import langid
+import redis , time, json
 
+from corpus_handler import CorpusHandler
 
 if __name__=='__main__':
 
-    
-    
-    import time
-    
+
+
     texts = [
      "The quick brown fox jumps over the lazy dog and fucks the hell out of it",
      "Den raske brune reven hopper over den late hunden og knuller i helvete ut av det",
@@ -28,7 +27,20 @@ if __name__=='__main__':
      ]
 
 
+    articles = []
+    for i, text in enumerate(texts):
+        articles.append({"content" : text, "title" : text[:15], "id":i+1})
+
+
+    db = redis.Redis(host='192.168.1.3', port=6666, db=3)
+
     
-    for text in texts:
-        t = time.time()
-        print langid.classify(text)[0], time.time() - t
+    cp = CorpusHandler(debug=True, db=db)
+    #cp.drop()
+
+
+    start = time.time()
+    for n, i in enumerate(articles):
+        print n,
+        if not   cp.index(i):
+            print "features:", cp.extract_features(doc = i["content"])
