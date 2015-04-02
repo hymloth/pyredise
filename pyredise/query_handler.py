@@ -1,4 +1,3 @@
-#!/usr/bin/python2.6.5
 # -*- coding: utf-8 -*-
 #
 # Copyright 2011 Christos Spiliopoulos.

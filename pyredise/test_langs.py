@@ -22,8 +22,8 @@ if __name__=='__main__':
      "El rápido zorro marrón salta sobre el perro perezoso y folla el infierno fuera de él",
      "En snabb brun räv hoppar över den lata hunden och knullar skiten ur det",
      "Hızlı kahverengi tilki tembel köpeğin üstünden atlar ve bunun cehenneme sikikleri",
-     "Η γρήγορη καφέ αλεπού πηδάει πάνω από το μεσημέρι και τρέχει έξω από αυτό",
-     "Idź prosto i skręć w lewo/prawo Poczekaj chwilę Chodź ze mną Szukam John’a już"
+     "Η γρήγορη καφέ αλεπού πηδάει πάνω από το μεσημέρι και τρέχει έξω από αυτό γιαγιάδες γιαγιαδες",
+     #"Idź prosto i skręć w lewo/prawo Poczekaj chwilę Chodź ze mną Szukam John’a już"
      ]
 
 
@@ -36,11 +36,11 @@ if __name__=='__main__':
 
     
     cp = CorpusHandler(debug=True, db=db)
-    #cp.drop()
+    cp.drop()
 
 
     start = time.time()
     for n, i in enumerate(articles):
-        print n,
+        print  i["id"]
         if not   cp.index(i):
             print "features:", cp.extract_features(doc = i["content"])

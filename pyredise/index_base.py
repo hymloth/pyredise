@@ -1,4 +1,3 @@
-#!/usr/bin/python2.6.5
 # -*- coding: utf-8 -*-
 #
 # Copyright 2011 Christos Spiliopoulos.
@@ -153,10 +152,16 @@ class IndexBase(object):
     def identify_language(self, text):
         
         self.lang = lang_mapping[langid.classify(text)[0]]
+        if self.debug: print "LANG", self.lang#, "stemmer", self.stem
         
         if self.lang == "greek":
             from stemmers.greek import stem, stopwords 
             self.stem = stem
+            self.legal_token = partial(self.legal_token, exclude_list=stopwords)
+        elif self.lang == "turkish": # unfortunately, turkish stemmer isnt included in nltk
+            import snowballstemmer
+            from stemmers.turkish import stopwords 
+            self.stem = snowballstemmer.stemmer("turkish").stemWord
             self.legal_token = partial(self.legal_token, exclude_list=stopwords)
         else:
             from nltk.stem import SnowballStemmer
@@ -165,5 +170,5 @@ class IndexBase(object):
             self.legal_token = partial(self.legal_token, exclude_list=stopwords.words(self.lang))
             
 
-        if self.debug: print "LANG", self.lang#, "stemmer", self.stem
+        
             

@@ -1,4 +1,3 @@
-#!/usr/bin/python2.6.5
 # -*- coding: utf-8 -*-
 #
 # Copyright 2011 Christos Spiliopoulos.
@@ -71,10 +70,13 @@ class CorpusHandler(index_handler.IndexHandler):
             try: # no encoding errors
                 if self.legal_token(lower):
                     item = self.stem(lower.decode("utf8", "ignore"))
+                    print lower, item
                     if item:
                         self.update_pos(item, i)
                         self.sanitized_text.append(item)
             except: 
+                import traceback
+                print traceback.format_exc()
                 if self.debug: print "Probable unicode error"  , lower
                 
         self.doc_len = len(self.sanitized_text)  
