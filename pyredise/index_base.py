@@ -150,7 +150,6 @@ class IndexBase(object):
     
         
     def identify_language(self, text):
-        
         self.lang = lang_mapping[langid.classify(text)[0]]
         if self.debug: print "LANG", self.lang#, "stemmer", self.stem
         

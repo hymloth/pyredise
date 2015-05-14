@@ -70,14 +70,12 @@ class CorpusHandler(index_handler.IndexHandler):
             try: # no encoding errors
                 if self.legal_token(lower):
                     item = self.stem(lower.decode("utf8", "ignore"))
-                    print lower, item
+                    #print lower, item
                     if item:
                         self.update_pos(item, i)
                         self.sanitized_text.append(item)
             except: 
-                import traceback
-                print traceback.format_exc()
-                if self.debug: print "Probable unicode error"  , lower
+                if self.debug: print "Probable unicode error"
                 
         self.doc_len = len(self.sanitized_text)  
         
@@ -108,7 +106,7 @@ class CorpusHandler(index_handler.IndexHandler):
                             self.term_remove_doc_id_title_posting(item, doc_id)
                     
             except: 
-                if self.debug: print "Probable unicode error"  
+                if self.debug: print "Probable unicode error" 
      
    
              
