@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import random
 import redis , time, json
 import re
@@ -10,7 +12,7 @@ if __name__=='__main__':
 	db = redis.Redis(host='192.168.1.3', port=6666, db=3)
 
 
-	f = open("pg38677.txt", "r")
+	f = open("greek_text.txt", "r")
 	text = f.read()
 	f.close()
 
@@ -22,7 +24,7 @@ if __name__=='__main__':
 	l = len(text)
 
 	while cnt < l:
-		r = random.randint(4000, 12000)
+		r = random.randint(400, 1200)
 
 		try:
 			data.append({"content":text[cnt:cnt+r], "title":text[cnt:cnt+random.randint(40, 130)], "id":cnt})
@@ -49,17 +51,17 @@ if __name__=='__main__':
 	q2 = QueryHandler(debug=False, db=db, use_lua=False)
 
 	
-	qs = ["reader enabled", "confidence following", "images of gods from Babylonia", "handmaids of his wives"]
+	qs = ["ακόρεστο θηλυκό", "ευάλωτη παρθένα", "ξέσπασα ολόλευκος", "κάμπος ανθισμένος"] # lol
 
 	s = time.time()
-	for i in qs:
+	'''for i in qs:
 		q.process_query(i)
 	print "q " , time.time() - s
 
 	s = time.time()
 	for i in qs:
 		q2.process_query(i)
-	print "q2 " , time.time() - s
+	print "q2 " , time.time() - s'''
 
 
 

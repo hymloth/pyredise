@@ -70,6 +70,7 @@ class CorpusHandler(index_handler.IndexHandler):
             try: # no encoding errors
                 if self.legal_token(lower):
                     item = self.stem(lower.decode("utf8", "ignore"))
+                    #item = self.stem(lower)
                     #print lower, item
                     if item:
                         self.update_pos(item, i)
@@ -97,6 +98,7 @@ class CorpusHandler(index_handler.IndexHandler):
             try: # no encoding errors
                 if self.legal_token(lower):
                     item = self.stem(lower.decode("utf8", "ignore"))
+                    #item = self.stem(lower)
                     if item:
                         if index: 
                             self.term_add_doc_id_title(item, doc_id)
