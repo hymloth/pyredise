@@ -4,7 +4,7 @@ from distutils.core import setup, Extension
        
 setup (name = 'pyredise',
        version = '0.18',
-       packages=['pyredise'],
+       packages=['pyredise', 'stemmers'],
        description = 'Python Redis Search Engine',
        url = "http://github.com/hymloth/pyredise",
        download_url = "https://github.com/hymloth/pyredise/archive/v1.8.zip",
