@@ -149,7 +149,7 @@ class CorpusHandler(index_handler.IndexHandler):
         rnd = kwargs.get('rnd', 4)
         doc = kwargs.get('doc', None)
 
-        # just in case, we chech if we have to re-tokenize the doc
+        # just in case, we check if we have to re-tokenize the doc
         if not len(self.sanitized_text):
             if doc is None: 
                 raise Exception, " No document given !! "
